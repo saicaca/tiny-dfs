@@ -1,5 +1,7 @@
 github.com/apache/thrift v0.16.0 h1:qEy6UW60iVOlUy+b9ZR0d5WzUWYGOo4HfopoyBaNmoY=
 github.com/apache/thrift v0.16.0/go.mod h1:PHK3hniurgQaNMZYaCLEqXKsYK8upmhPbmdP2FXSqgU=
+github.com/dghubble/trie v0.0.0-20220811160003-18e0eff3ca7b h1:TDVVzd8q/n2YLqidDna2iptspyyNyqi9nZmxNA6Yrg0=
+github.com/dghubble/trie v0.0.0-20220811160003-18e0eff3ca7b/go.mod h1:GWlN/cTm3wBVk2lr8Wszyla0FEgP9EH12iTLm7AH96k=
 github.com/golang/mock v1.5.0/go.mod h1:CWnOUgYIOo4TcNZ0wHX3YZCqsaM1I1Jvs6v3mP3KVu8=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=

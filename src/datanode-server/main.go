@@ -38,7 +38,7 @@ func runServer(transportFactory thrift.TTransportFactory, protocolFactory thrift
 }
 
 func Usage() {
-	fmt.Fprintf(os.Stderr, "Usage of ", os.Args[0], ":\n")
+	fmt.Fprint(os.Stderr, "Usage of ", os.Args[0], ":\n")
 	flag.PrintDefaults()
 	fmt.Fprint(os.Stderr, "\n")
 }

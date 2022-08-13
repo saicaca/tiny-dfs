@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/apache/thrift/lib/go/thrift"
+	"log"
 	"os"
 	"tiny-dfs/gen-go/NameNode"
 )
@@ -18,27 +19,27 @@ func main() {
 	protocolFactory = thrift.NewTBinaryProtocolFactoryConf(nil)
 
 	var transportFactory thrift.TTransportFactory
-	if err := runServer(transportFactory, protocolFactory, *addr); err != nil {
-		fmt.Println("error running server:", err)
-	}
-}
 
-func runServer(transportFactory thrift.TTransportFactory, protocolFactory thrift.TProtocolFactory, addr string) error {
-	transport, err := thrift.NewTServerSocket(addr)
+	transport, err := thrift.NewTServerSocket(*addr)
 	if err != nil {
-		fmt.Println("run server error:", err)
+		log.Fatalln("run server error:", err)
 	}
-	fmt.Println(transport)
 
-	handler := NewNameNodeHandler()
+	core := NewNameNodeCore()
+	handler := NewNameNodeHandler(core)
 	processor := NameNode.NewNameNodeProcessor(handler)
 	server := thrift.NewTSimpleServer4(processor, transport, transportFactory, protocolFactory)
 
-	return server.Serve()
+	log.Println("NameNode ready")
+
+	err = server.Serve()
+	if err != nil {
+		log.Fatalln("run server error:", err)
+	}
 }
 
 func Usage() {
-	fmt.Fprintf(os.Stderr, "Usage of ", os.Args[0], ":\n")
+	fmt.Fprint(os.Stderr, "Usage of ", os.Args[0], ":\n")
 	flag.PrintDefaults()
 	fmt.Fprint(os.Stderr, "\n")
 }

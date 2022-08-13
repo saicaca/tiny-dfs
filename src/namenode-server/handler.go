@@ -6,10 +6,13 @@ import (
 )
 
 type NameNodeHandler struct {
+	core *NameNodeCore
 }
 
-func NewNameNodeHandler() *NameNodeHandler {
-	return &NameNodeHandler{}
+func NewNameNodeHandler(core *NameNodeCore) *NameNodeHandler {
+	return &NameNodeHandler{
+		core: core,
+	}
 }
 
 func (n NameNodeHandler) Put(ctx context.Context, local_file_path string, remote_file_path string) (_r *NameNode.Response, _err error) {

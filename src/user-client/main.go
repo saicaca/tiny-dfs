@@ -1,12 +1,17 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/urfave/cli/v2"
 	"log"
 	"os"
+	"tiny-dfs/gen-go/tdfs"
+	dnc "tiny-dfs/src/datanode-client"
 )
+
+var defaultCtx = context.Background()
 
 func main() {
 	app := &cli.App{
@@ -23,6 +28,7 @@ func main() {
 					localPath := c.Args().Get(0)
 					remotePath := c.Args().Get(1)
 					fmt.Printf("Put a file from %s to %s\n", localPath, remotePath)
+					PutFile(localPath, remotePath)
 					return nil
 				},
 			},
@@ -130,4 +136,36 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+}
+
+func PutFile(localPath string, remotePath string) {
+	DNAddr := "localhost:9090"
+	client, err := dnc.NewDataNodeClient(DNAddr)
+	if err != nil {
+		log.Println("Failed to connect DataNode", DNAddr)
+	}
+	log.Println("Connected to DataNode", DNAddr)
+
+	data, err := os.ReadFile(localPath)
+	if err != nil {
+		log.Println("Failed to load local file", localPath)
+	}
+
+	file, err := os.Open(localPath)
+	info, err := file.Stat()
+	if err != nil {
+		log.Println("Failed to load file info")
+	}
+
+	meta := &tdfs.Metadata{
+		IsDeleted: false,
+		Mtime:     info.ModTime().Unix(),
+		Size:      info.Size(),
+	}
+
+	resp, err := client.Put(defaultCtx, remotePath, data, meta)
+	if err != nil {
+		log.Panicln("Put file error:", err)
+	}
+	log.Println(resp)
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	"log"
 	"os"
-	"tiny-dfs/gen-go/NameNode"
+	"tiny-dfs/gen-go/tdfs"
 )
 
 func main() {
@@ -19,6 +19,7 @@ func main() {
 	protocolFactory = thrift.NewTBinaryProtocolFactoryConf(nil)
 
 	var transportFactory thrift.TTransportFactory
+	transportFactory = thrift.NewTBufferedTransportFactory(8192)
 
 	transport, err := thrift.NewTServerSocket(*addr)
 	if err != nil {
@@ -27,7 +28,7 @@ func main() {
 
 	core := NewNameNodeCore()
 	handler := NewNameNodeHandler(core)
-	processor := NameNode.NewNameNodeProcessor(handler)
+	processor := tdfs.NewNameNodeProcessor(handler)
 	server := thrift.NewTSimpleServer4(processor, transport, transportFactory, protocolFactory)
 
 	log.Println("NameNode ready")

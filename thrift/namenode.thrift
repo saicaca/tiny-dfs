@@ -1,39 +1,36 @@
-namespace go NameNode
+include "shared.thrift"
 
-struct Response {
-    1:i32 status;
-    2:string msg;
-}
+namespace go tdfs
 
 service NameNode {
-    Response Put (
+    shared.Response Put (
         1:required string local_file_path;
         2:required string remote_file_path;
     )
 
-    Response Get (
+    shared.Response Get (
         1:required string remote_file_path;
         2:required string local_file_path;
     )
 
-    Response Delete (
+    shared.Response Delete (
         1:required string remote_file_path;
     )
 
-    Response Stat (
+    shared.Response Stat (
         1:required string remote_file_path;
     )
 
-    Response Mkdir (
+    shared.Response Mkdir (
         1:required string remote_file_path;
     )
 
-    Response Rename (
+    shared.Response Rename (
         1:required string rename_src_path;
         2:required string rename_dest_path;
     )
 
-    Response List(
+    shared.Response List(
         1:required string remote_dir_path;
     )
 }

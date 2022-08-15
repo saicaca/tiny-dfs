@@ -13,7 +13,6 @@ service DataNode {
 
     shared.Response Get (
         1:required string remote_file_path;
-        2:required string local_file_path;
     )
 
     shared.Response Delete (

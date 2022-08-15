@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 	"tiny-dfs/gen-go/tdfs"
 )
@@ -35,4 +37,27 @@ func TestReadMeta(t *testing.T) {
 		t.Error(err)
 	}
 	fmt.Println(mp)
+}
+
+func TestDNSave(t *testing.T) {
+	core := &DataNodeCore{
+		root: "./test-output/",
+	}
+
+	file, err := core.Get("testfile")
+	if err != nil {
+		t.Error("Get failed")
+	}
+	fmt.Println(file.Medatada)
+
+	savePath := "./test-local/testfile"
+	dir := filepath.Dir(savePath)
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		t.Error("mkdir error:", err)
+	}
+	err = os.WriteFile(savePath, file.Data, 0777)
+	if err != nil {
+		t.Error("write file error:", err)
+	}
 }

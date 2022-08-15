@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -60,6 +61,31 @@ func (core *DataNodeCore) Save(path string, data []byte, meta *tdfs.Metadata) er
 	}
 
 	return nil
+}
+
+func (core *DataNodeCore) Get(path string) (*tdfs.File, error) {
+	dataPath := core.root + DATA_PATH + path
+	data, err := os.ReadFile(dataPath)
+	if err != nil {
+		return nil, errors.New("Failed to load file:" + dataPath)
+	}
+
+	var meta *tdfs.Metadata
+	metaPath := core.root + META_PATH + path + META_EXTENSION
+	metaFile, err := os.Open(metaPath)
+	if err != nil {
+		return nil, errors.New("Failed to load metadata:" + metaPath)
+	}
+	defer metaFile.Close()
+	dec := gob.NewDecoder(metaFile)
+	err = dec.Decode(&meta)
+	if err != nil {
+		return nil, errors.New("Failed to decode metadata:" + metaPath)
+	}
+	return &tdfs.File{
+		Data:     data,
+		Medatada: meta,
+	}, nil
 }
 
 // scan 扫描本地所存储的文件

@@ -3,3 +3,6 @@
 
 # Thrift generate
 gen-go/
+
+# Test
+playground/

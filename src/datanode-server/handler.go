@@ -31,9 +31,12 @@ func (d *DataNodeHandler) Put(ctx context.Context, remote_file_path string, file
 	return &tdfs.Response{Status: 200, Msg: "Put ok"}, nil
 }
 
-func (d *DataNodeHandler) Get(ctx context.Context, remote_file_path string, local_file_path string) (_r *tdfs.Response, _err error) {
-	//TODO implement me
-	panic("implement me")
+func (d *DataNodeHandler) Get(ctx context.Context, remote_file_path string) (_r *tdfs.Response, _err error) {
+	file, err := d.core.Get(remote_file_path)
+	if err != nil {
+		return &tdfs.Response{Status: 400}, err
+	}
+	return &tdfs.Response{Status: 200, File: file}, nil
 }
 
 func (d *DataNodeHandler) Delete(ctx context.Context, remote_file_path string) (_r *tdfs.Response, _err error) {

@@ -7,6 +7,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"log"
 	"os"
+	"path/filepath"
 	"tiny-dfs/gen-go/tdfs"
 	dnc "tiny-dfs/src/datanode-client"
 )
@@ -28,7 +29,7 @@ func main() {
 					localPath := c.Args().Get(0)
 					remotePath := c.Args().Get(1)
 					fmt.Printf("Put a file from %s to %s\n", localPath, remotePath)
-					PutFile(localPath, remotePath)
+					putFile(localPath, remotePath)
 					return nil
 				},
 			},
@@ -44,6 +45,7 @@ func main() {
 					remotePath := c.Args().Get(0)
 					localPath := c.Args().Get(1)
 					fmt.Printf("Download the file %s to %s\n", remotePath, localPath)
+					getFile(remotePath, localPath)
 					return nil
 				},
 			},
@@ -138,7 +140,7 @@ func main() {
 	}
 }
 
-func PutFile(localPath string, remotePath string) {
+func putFile(localPath string, remotePath string) {
 	DNAddr := "localhost:9090"
 	client, err := dnc.NewDataNodeClient(DNAddr)
 	if err != nil {
@@ -168,4 +170,28 @@ func PutFile(localPath string, remotePath string) {
 		log.Panicln("Put file error:", err)
 	}
 	log.Println(resp)
+}
+
+func getFile(remotePath string, localPath string) {
+	DNAddr := "localhost:9090"
+	client, err := dnc.NewDataNodeClient(DNAddr)
+	if err != nil {
+		log.Println("Failed to connect DataNode", DNAddr)
+	}
+	log.Println("Connected to DataNode", DNAddr)
+
+	resp, err := client.Get(defaultCtx, remotePath)
+	if err != nil {
+		log.Panicln("Failed to get file:", err)
+	}
+
+	dir := filepath.Dir(localPath)
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		log.Panicln("Failed to create directories:", err)
+	}
+	err = os.WriteFile(localPath, resp.File.Data, 0777)
+	if err != nil {
+		log.Panicln("Failed to write file:", err)
+	}
 }

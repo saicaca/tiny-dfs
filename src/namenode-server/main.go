@@ -6,12 +6,13 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	"log"
 	"os"
+	"time"
 	"tiny-dfs/gen-go/tdfs"
 )
 
 func main() {
 	// 获取运行参数 {addr}
-	addr := flag.String("addr", "localhost:9090", "Address to listen to")
+	addr := flag.String("addr", "localhost:19100", "Address to listen to")
 	flag.Usage = Usage
 	flag.Parse()
 
@@ -26,12 +27,12 @@ func main() {
 		log.Fatalln("run server error:", err)
 	}
 
-	core := NewNameNodeCore()
+	core := NewNameNodeCore(time.Minute * 5)
 	handler := NewNameNodeHandler(core)
 	processor := tdfs.NewNameNodeProcessor(handler)
 	server := thrift.NewTSimpleServer4(processor, transport, transportFactory, protocolFactory)
 
-	log.Println("NameNode ready")
+	log.Println("NameNode running on", *addr)
 
 	err = server.Serve()
 	if err != nil {

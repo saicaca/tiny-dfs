@@ -6,6 +6,7 @@ import (
 	"log"
 	"path/filepath"
 	"strings"
+	"tiny-dfs/gen-go/tdfs"
 )
 
 // PathTrie 是 NameNode 中管理文件系统目录的数据结构
@@ -24,7 +25,7 @@ func NewPathTrie() *PathTrie {
 type INode struct {
 	IsDir    bool              // true 表示本节点为目录，false 则为文件
 	Children map[string]*INode // 本目录下的文件和子目录 INode 列表
-	Meta     MetaData          // 文件元数据
+	Meta     tdfs.Metadata     // 文件元数据
 	Replica  uint32            // 本文件当前副本数
 	DNList   set               // 存有本文件的 DataNode 的 UUID 集合
 }
@@ -79,7 +80,7 @@ func (t *PathTrie) FindDir(path string) (*INode, error) {
 }
 
 // 保存文件
-func (t *PathTrie) PutFile(path string, meta MetaData) error {
+func (t *PathTrie) PutFile(path string, meta *tdfs.Metadata) error {
 	dir, fileName := filepath.Split(path)
 	dirNode, err := t.getDir(dir, true)
 	if err != nil {
@@ -87,7 +88,7 @@ func (t *PathTrie) PutFile(path string, meta MetaData) error {
 	}
 	dirNode.Children[fileName] = &INode{
 		IsDir:   false,
-		Meta:    meta,
+		Meta:    *meta,
 		Replica: 1,
 		DNList:  make(set),
 	}

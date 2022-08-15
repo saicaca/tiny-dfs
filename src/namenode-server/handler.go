@@ -15,6 +15,11 @@ func NewNameNodeHandler(core *NameNodeCore) *NameNodeHandler {
 	}
 }
 
+func (n NameNodeHandler) Register(ctx context.Context, meta_map map[string]*tdfs.Metadata) (_r *tdfs.Response, _err error) {
+	n.core.PutFile(meta_map)
+	return &tdfs.Response{Status: 200, Msg: "Register success"}, nil
+}
+
 func (n NameNodeHandler) Put(ctx context.Context, local_file_path string, remote_file_path string) (_r *tdfs.Response, _err error) {
 	//TODO implement me
 	panic("implement me")

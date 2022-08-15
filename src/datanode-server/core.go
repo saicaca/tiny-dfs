@@ -1,32 +1,58 @@
 package main
 
 import (
+	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"tiny-dfs/gen-go/tdfs"
+	nnc "tiny-dfs/src/namenode-client"
 )
 
 type DataNodeCore struct {
-	root string
+	root     string
+	nnclient *tdfs.NameNodeClient
 }
 
-func NewDataNodeCore(root string) *DataNodeCore {
-	return &DataNodeCore{
-		root: root,
+type DNConfig struct {
+	root   string // 文件存储根目录
+	NNAddr string // 连接的 NameNode 地址
+	isTest bool   // 是否为单机测试模式
+}
+
+func NewDataNodeCore(config *DNConfig) (*DataNodeCore, error) {
+	core := &DataNodeCore{}
+	core.root = config.root
+
+	// 非本地测试模式，扫描文件并发送至 NameNode
+	if !config.isTest {
+		nnclient, err := nnc.NewNameNodeClient(config.NNAddr)
+		if err != nil {
+			log.Println("Failed to create NameNode client:", err)
+			return nil, err
+		}
+		core.nnclient = nnclient
+		if err := core.Register(); err != nil {
+			log.Println("Failed to register:", err)
+		}
+		return nil, err
 	}
+	return core, nil
 }
 
-type MetaMap map[string]tdfs.Metadata // map { 文件路径 -> 元数据 }
+type MetaMap map[string]*tdfs.Metadata // map { 文件路径 -> 元数据 }
 
 const (
 	META_PATH      = "meta/"
 	DATA_PATH      = "data/"
 	META_EXTENSION = ".meta"
 )
+
+var defaultCtx = context.Background()
 
 func (core *DataNodeCore) Save(path string, data []byte, meta *tdfs.Metadata) error {
 	// 如果保存路径不存在则创建路径
@@ -97,6 +123,7 @@ func (core *DataNodeCore) Scan() (*MetaMap, error) {
 			return nil
 		}
 
+		// 读取 metadata
 		var m tdfs.Metadata
 		file, err := os.Open(path)
 		defer file.Close()
@@ -110,7 +137,7 @@ func (core *DataNodeCore) Scan() (*MetaMap, error) {
 			fmt.Println("decode metadata failed:", err)
 			return err
 		}
-		mp[path] = m
+		mp[path] = &m
 		return nil
 	})
 	if err != nil {
@@ -118,4 +145,19 @@ func (core *DataNodeCore) Scan() (*MetaMap, error) {
 		return nil, err
 	}
 	return &mp, nil
+}
+
+// 向 NameNode 注册服务
+func (core *DataNodeCore) Register() error {
+	metaMap, err := core.Scan()
+	if err != nil {
+		log.Panicln("Failed to scan files:", err)
+		return err
+	}
+	resp, err := core.nnclient.Register(defaultCtx, *metaMap)
+	if err != nil {
+		return err
+	}
+	log.Println(resp)
+	return nil
 }

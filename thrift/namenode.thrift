@@ -3,6 +3,10 @@ include "shared.thrift"
 namespace go tdfs
 
 service NameNode {
+    shared.Response Register (
+        1:map<string,shared.Metadata> meta_map;
+    )
+
     shared.Response Put (
         1:required string local_file_path;
         2:required string remote_file_path;

@@ -16,6 +16,11 @@ func NewDataNodeHandler(core *DataNodeCore) *DataNodeHandler {
 	}
 }
 
+func (d *DataNodeHandler) Heartbeat(ctx context.Context) (_r *tdfs.Response, _err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (d *DataNodeHandler) Ping(ctx context.Context) (_r *tdfs.Response, _err error) {
 	log.Println("Ping Success")
 	return &tdfs.Response{Status: 200}, nil

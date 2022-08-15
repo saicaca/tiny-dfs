@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"testing"
+	"tiny-dfs/gen-go/tdfs"
 )
 
 func TestPath(t *testing.T) {
@@ -35,7 +36,7 @@ func TestDirCreate(t *testing.T) {
 }
 
 func TestCreateFile(t *testing.T) {
-	meta := MetaData{
+	meta := &tdfs.Metadata{
 		Name: "haha.txt",
 		Size: 660,
 	}
@@ -43,5 +44,4 @@ func TestCreateFile(t *testing.T) {
 	trie.PutFile("aaa/bbb/haha.txt", meta)
 	trie.List("aaa/")
 	trie.List("aaa/bbb")
-
 }

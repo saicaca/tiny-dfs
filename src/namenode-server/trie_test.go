@@ -52,3 +52,9 @@ func TestSliceMap(t *testing.T) {
 	mp["114514"] = append(mp["114514"], "second")
 	fmt.Println(mp["114514"])
 }
+
+func TestSlice(t *testing.T) {
+	var sl []string
+	sl = append(sl, "114514")
+	fmt.Println(sl)
+}

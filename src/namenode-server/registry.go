@@ -16,38 +16,41 @@ type DNItem struct {
 }
 
 type Registry struct {
-	timeout time.Duration
-	mu      sync.Mutex
-	dnmap   map[string]*DNItem
+	timeout      time.Duration
+	mu           sync.Mutex
+	dnmap        map[string]*DNItem
+	deleteAction func(addr string)
 }
 
 const (
 	defaultTimeout = time.Minute * 5
 )
 
-func NewRegistry(timeout time.Duration) *Registry {
-	return &Registry{
-		dnmap:   make(map[string]*DNItem),
-		timeout: timeout,
+func NewRegistry(timeout time.Duration, deleteAction func(addr string)) *Registry {
+	registry := &Registry{
+		dnmap:        make(map[string]*DNItem),
+		timeout:      timeout,
+		deleteAction: deleteAction,
 	}
+	registry.StartHeartBeat() // 开始心跳检测
+	return registry
 }
-
-var DefaultRegister = NewRegistry(defaultTimeout)
 
 func (r *Registry) PutDataNode(addr string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	s := r.dnmap[addr]
 	if s == nil { // DN 未注册
-		client, err := dnc.NewDataNodeClient(addr) // 获取 DN Client
-		if err != nil {
-			log.Panicln("Failed to create DataNodeClient", err)
-			return err
-		}
+		// TODO 暂时停用DN客户端创建
+		//client, err := dnc.NewDataNodeClient(addr) // 获取 DN Client
+		//if err != nil {
+		//	log.Panicln("Failed to create DataNodeClient", err)
+		//	return err
+		//}
 		r.dnmap[addr] = &DNItem{
 			Addr:   addr,
 			start:  time.Now(),
-			client: client,
+			client: nil,
 		}
 	} else {
 		s.start = time.Now()
@@ -64,9 +67,28 @@ func (r *Registry) AliveDataNodes(deleteAction func(addr string)) []string {
 			alive = append(alive, addr)
 		} else {
 			delete(r.dnmap, addr)
-			deleteAction(addr)
+			r.deleteAction(addr)
 		}
 	}
 	sort.Strings(alive)
 	return alive
+}
+
+func (r *Registry) StartHeartBeat() {
+	log.Println("心跳检测启动")
+
+	ticker := time.NewTicker(time.Second * 5)
+	go func() {
+		for range ticker.C {
+			for _, item := range r.dnmap {
+				_, err := dnc.NewDataNodeClient(item.Addr)
+				if err != nil {
+					log.Println("DataNode", item.Addr, "无法连接")
+				} else {
+					log.Println("DataNode", item.Addr, "连接正常")
+				}
+			}
+		}
+	}()
+
 }

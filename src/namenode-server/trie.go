@@ -12,8 +12,9 @@ import (
 
 // PathTrie 是 NameNode 中管理文件系统目录的数据结构
 type PathTrie struct {
-	root      *INode
-	filesByDN map[string][]string
+	root       *INode
+	filesByDN  map[string][]string
+	minReplica uint32
 }
 
 // NewPathTrie 创建新的 PathTrie
@@ -140,6 +141,33 @@ func (t *PathTrie) PutFile(path string, DNAddr string, meta *tdfs.Metadata) (*sh
 
 	// 写入 DN地址 -> 文件 map
 	t.filesByDN[DNAddr] = append(t.filesByDN[DNAddr], path)
+
+	return result, nil
+}
+
+// RemoveByDN 移除指定 DN 下所有文件，返回副本数量低于最低值的文件列表
+func (t *PathTrie) RemoveByDN(DNAddr string) (*shared.Result, error) {
+	fileList := t.filesByDN[DNAddr]
+
+	var filesToCopy []string
+
+	for _, filePath := range fileList {
+		dir, fileName := filepath.Split(filePath)
+		dirNode, err := t.getDir(dir, true)
+		if err != nil {
+			return nil, err
+		}
+
+		dirNode.Children[fileName].Replica -= 1 // 减少副本数量
+		if dirNode.Children[fileName].Replica < t.minReplica {
+			filesToCopy = append(filesToCopy, filePath)
+		}
+	}
+
+	result := &shared.Result{
+		Data: map[string]interface{}{},
+	}
+	result.Data["underLimit"] = filesToCopy
 
 	return result, nil
 }

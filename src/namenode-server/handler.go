@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"tiny-dfs/gen-go/tdfs"
 )
 
@@ -18,6 +19,9 @@ func NewNameNodeHandler(core *NameNodeCore) *NameNodeHandler {
 
 func (n NameNodeHandler) Register(ctx context.Context, meta_map map[string]*tdfs.Metadata, client_ip string) (_r *tdfs.Response, _err error) {
 	fmt.Println("获取到客户端 IP", client_ip)
+	if err := n.core.Registry.PutDataNode(client_ip); err != nil {
+		log.Panicln("DataNode 注册失败：", client_ip)
+	}
 	n.core.PutFile(meta_map, client_ip)
 	return &tdfs.Response{Status: 200, Msg: "Register success"}, nil
 }

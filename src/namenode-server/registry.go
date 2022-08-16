@@ -55,7 +55,7 @@ func (r *Registry) PutDataNode(addr string) error {
 	return nil
 }
 
-func (r *Registry) AliveDataNodes() []string {
+func (r *Registry) AliveDataNodes(deleteAction func(addr string)) []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var alive []string
@@ -64,6 +64,7 @@ func (r *Registry) AliveDataNodes() []string {
 			alive = append(alive, addr)
 		} else {
 			delete(r.dnmap, addr)
+			deleteAction(addr)
 		}
 	}
 	sort.Strings(alive)

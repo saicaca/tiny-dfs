@@ -7,17 +7,20 @@ import (
 	"path/filepath"
 	"strings"
 	"tiny-dfs/gen-go/tdfs"
+	"tiny-dfs/src/shared"
 )
 
 // PathTrie 是 NameNode 中管理文件系统目录的数据结构
 type PathTrie struct {
-	root *INode
+	root      *INode
+	filesByDN map[string][]string
 }
 
 // NewPathTrie 创建新的 PathTrie
 func NewPathTrie() *PathTrie {
 	return &PathTrie{
-		root: NewDirNode(),
+		root:      NewDirNode(),
+		filesByDN: make(map[string][]string),
 	}
 }
 
@@ -27,12 +30,14 @@ type INode struct {
 	Children map[string]*INode // 本目录下的文件和子目录 INode 列表
 	Meta     tdfs.Metadata     // 文件元数据
 	Replica  uint32            // 本文件当前副本数
-	DNList   set               // 存有本文件的 DataNode 的 UUID 集合
+	DNList   set               // 存有本文件的 DataNode 的 IP 集合
 }
 
 type (
 	set map[string]struct{}
 )
+
+var void struct{}
 
 func NewDirNode() *INode {
 	return &INode{
@@ -79,21 +84,64 @@ func (t *PathTrie) FindDir(path string) (*INode, error) {
 	return node, nil
 }
 
+type PutResult int32
+
+const (
+	PUT_SUCCESS  = 0
+	PUT_OUTDATED = 1
+	PUT_UPDATED  = 2
+)
+
 // 保存文件
-func (t *PathTrie) PutFile(path string, meta *tdfs.Metadata) error {
+func (t *PathTrie) PutFile(path string, DNAddr string, meta *tdfs.Metadata) (*shared.Result, error) {
+	// 获取文件所在目录节点
 	dir, fileName := filepath.Split(path)
 	dirNode, err := t.getDir(dir, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	dirNode.Children[fileName] = &INode{
-		IsDir:   false,
-		Meta:    *meta,
-		Replica: 1,
-		DNList:  make(set),
+
+	result := shared.NewResult()
+
+	// 获取旧的修改时间
+	var currModTime int64 = 0
+	if dirNode.Children[fileName] != nil {
+		currModTime = dirNode.Children[fileName].Meta.Mtime
 	}
-	log.Println("put file:", path)
-	return nil
+
+	newModTime := meta.Mtime
+	if newModTime > currModTime { // PUT 的文件比现有版本新或为新建文件，更新现存的所有副本
+		result.Data["status"] = PUT_UPDATED
+		if dirNode.Children[fileName] != nil { // 文件存在，将当前所有副本所在节点放入待更新列表
+			result.Data["toUpdate"] = dirNode.Children[fileName].DNList
+		} else { // 新建文件，待更新列表为空列表
+			result.Data["toUpdate"] = make(set)
+		}
+
+		// 新建 INode
+		dirNode.Children[fileName] = &INode{
+			IsDir:   false,
+			Meta:    *meta,
+			Replica: 1,
+			DNList:  make(set),
+		}
+		dirNode.Children[fileName].DNList[DNAddr] = void // 将当前 DN 地址加入到副本地址列表
+		log.Println("新建或更新文件", path, "，来自 DataNode 节点", DNAddr)
+	} else if newModTime == currModTime { // PUT 的文件和当前最新版本相同，副本数 + 1
+		result.Data["status"] = PUT_SUCCESS
+		dirNode.Children[fileName].Replica += 1
+		dirNode.Children[fileName].DNList[DNAddr] = void
+		log.Println("新增文件副本", path, "，来自 DataNode 节点", DNAddr)
+	} else { // 当前 PUT 的文件版本低于最新版本
+		result.Data["status"] = PUT_OUTDATED
+		result.Data["source"] = dirNode.Children[fileName].DNList
+		log.Println("来自 DataNode 节点", DNAddr, "的文件", path, "版本低于现有，将自动更新")
+	}
+
+	// 写入 DN地址 -> 文件 map
+	t.filesByDN[DNAddr] = append(t.filesByDN[DNAddr], path)
+
+	return result, nil
 }
 
 // 显示指定目录下的所有文件和子目录

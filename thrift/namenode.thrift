@@ -5,6 +5,7 @@ namespace go tdfs
 service NameNode {
     shared.Response Register (
         1:map<string,shared.Metadata> meta_map;
+        2:string client_ip
     )
 
     shared.Response Put (

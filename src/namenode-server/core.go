@@ -19,13 +19,17 @@ func NewNameNodeCore(timeout time.Duration) *NameNodeCore {
 	return core
 }
 
-func (core *NameNodeCore) PutFile(metaMap map[string]*tdfs.Metadata) {
+func (core *NameNodeCore) PutFile(metaMap map[string]*tdfs.Metadata, DNAddr string) {
 	for path, meta := range metaMap {
-		err := core.MetaTrie.PutFile(path, meta)
+		_, err := core.MetaTrie.PutFile(path, DNAddr, meta)
 		if err != nil {
 			log.Println("Put file", path, "failed:", err)
 		} else {
 			log.Println("成功添加文件", path)
 		}
 	}
+}
+
+func (core *NameNodeCore) RemoveFromTrie(DNAddr string) {
+
 }

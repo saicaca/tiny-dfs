@@ -16,17 +16,25 @@ import (
 type DataNodeCore struct {
 	root     string
 	nnclient *tdfs.NameNodeClient
+	localIP  string
 }
 
 type DNConfig struct {
-	root   string // 文件存储根目录
-	NNAddr string // 连接的 NameNode 地址
-	isTest bool   // 是否为单机测试模式
+	root    string // 文件存储根目录
+	NNAddr  string // 连接的 NameNode 地址
+	isTest  bool   // 是否为单机测试模式
+	localIP string
 }
+
+var defaultCtx = context.Background()
 
 func NewDataNodeCore(config *DNConfig) (*DataNodeCore, error) {
 	core := &DataNodeCore{}
 	core.root = config.root
+	core.localIP = config.localIP
+	defaultCtx = context.WithValue(defaultCtx, "address", "hello") // 向 context 加入本地 IP	// TODO 服务器端读不出来
+	fmt.Println("localIP:", config.localIP)
+	fmt.Println("localIP in context", defaultCtx.Value("ip"))
 
 	// 非本地测试模式，扫描文件并发送至 NameNode
 	if !config.isTest {
@@ -51,8 +59,6 @@ const (
 	DATA_PATH      = "data/"
 	META_EXTENSION = ".meta"
 )
-
-var defaultCtx = context.Background()
 
 func (core *DataNodeCore) Save(path string, data []byte, meta *tdfs.Metadata) error {
 	// 如果保存路径不存在则创建路径
@@ -154,7 +160,7 @@ func (core *DataNodeCore) Register() error {
 		log.Panicln("Failed to scan files:", err)
 		return err
 	}
-	resp, err := core.nnclient.Register(defaultCtx, *metaMap)
+	resp, err := core.nnclient.Register(defaultCtx, *metaMap, core.localIP)
 	if err != nil {
 		return err
 	}

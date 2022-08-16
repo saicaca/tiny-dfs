@@ -41,7 +41,14 @@ func TestCreateFile(t *testing.T) {
 		Size: 660,
 	}
 	trie := NewPathTrie()
-	trie.PutFile("aaa/bbb/haha.txt", meta)
+	trie.PutFile("aaa/bbb/haha.txt", "192.168.0.114", meta)
 	trie.List("aaa/")
 	trie.List("aaa/bbb")
+}
+
+func TestSliceMap(t *testing.T) {
+	mp := make(map[string][]string)
+	mp["114514"] = append(mp["114514"], "ipaddr")
+	mp["114514"] = append(mp["114514"], "second")
+	fmt.Println(mp["114514"])
 }

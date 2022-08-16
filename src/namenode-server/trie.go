@@ -20,8 +20,9 @@ type PathTrie struct {
 // NewPathTrie 创建新的 PathTrie
 func NewPathTrie() *PathTrie {
 	return &PathTrie{
-		root:      NewDirNode(),
-		filesByDN: make(map[string][]string),
+		root:       NewDirNode(),
+		filesByDN:  make(map[string][]string),
+		minReplica: 3,
 	}
 }
 
@@ -149,6 +150,8 @@ func (t *PathTrie) PutFile(path string, DNAddr string, meta *tdfs.Metadata) (*sh
 func (t *PathTrie) RemoveByDN(DNAddr string) (*shared.Result, error) {
 	fileList := t.filesByDN[DNAddr]
 
+	fmt.Println("待删除文件：", fileList)
+
 	var filesToCopy []string
 
 	for _, filePath := range fileList {
@@ -159,6 +162,7 @@ func (t *PathTrie) RemoveByDN(DNAddr string) (*shared.Result, error) {
 		}
 
 		dirNode.Children[fileName].Replica -= 1 // 减少副本数量
+		delete(dirNode.DNList, DNAddr)          // 从文件的副本 DataNode 列表中移除当前 DataNode
 		if dirNode.Children[fileName].Replica < t.minReplica {
 			filesToCopy = append(filesToCopy, filePath)
 		}

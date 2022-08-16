@@ -31,8 +31,6 @@ func (core *NameNodeCore) PutFile(metaMap map[string]*tdfs.Metadata, DNAddr stri
 		_, err := core.MetaTrie.PutFile(path, DNAddr, meta)
 		if err != nil {
 			log.Println("Put file", path, "failed:", err)
-		} else {
-			log.Println("成功添加文件", path)
 		}
 	}
 }

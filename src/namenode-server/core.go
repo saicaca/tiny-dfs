@@ -28,10 +28,14 @@ func (core *NameNodeCore) RegisterDataNode() {
 
 func (core *NameNodeCore) PutFile(metaMap map[string]*tdfs.Metadata, DNAddr string) {
 	for path, meta := range metaMap {
-		_, err := core.MetaTrie.PutFile(path, DNAddr, meta)
-		if err != nil {
-			log.Println("Put file", path, "failed:", err)
-		}
+		core.PutSingleFile(path, meta, DNAddr)
+	}
+}
+
+func (core *NameNodeCore) PutSingleFile(path string, meta *tdfs.Metadata, DNAddr string) {
+	_, err := core.MetaTrie.PutFile(path, DNAddr, meta)
+	if err != nil {
+		log.Println("Put file", path, "failed:", err)
 	}
 }
 

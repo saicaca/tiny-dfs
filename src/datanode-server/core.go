@@ -14,16 +14,21 @@ import (
 )
 
 type DataNodeCore struct {
-	root     string
-	nnclient *tdfs.NameNodeClient
-	localIP  string
+	root       string
+	nnclient   *tdfs.NameNodeClient
+	localIP    string
+	fileNum    int64
+	totalSpace int64
+	usedSpace  int64
+	traffic    int64
 }
 
 type DNConfig struct {
-	root    string // 文件存储根目录
-	NNAddr  string // 连接的 NameNode 地址
-	isTest  bool   // 是否为单机测试模式
-	localIP string
+	root       string // 文件存储根目录
+	NNAddr     string // 连接的 NameNode 地址
+	isTest     bool   // 是否为单机测试模式
+	localIP    string
+	totalSpace int64
 }
 
 var defaultCtx = context.Background()
@@ -32,9 +37,10 @@ func NewDataNodeCore(config *DNConfig) (*DataNodeCore, error) {
 	core := &DataNodeCore{}
 	core.root = config.root
 	core.localIP = config.localIP
-	defaultCtx = context.WithValue(defaultCtx, "address", "hello") // 向 context 加入本地 IP	// TODO 服务器端读不出来
-	fmt.Println("localIP:", config.localIP)
-	fmt.Println("localIP in context", defaultCtx.Value("ip"))
+	core.totalSpace = config.totalSpace
+	core.fileNum = 0
+	core.usedSpace = 0
+	core.traffic = 0
 
 	// 非本地测试模式，扫描文件并发送至 NameNode
 	if !config.isTest {
@@ -46,8 +52,8 @@ func NewDataNodeCore(config *DNConfig) (*DataNodeCore, error) {
 		core.nnclient = nnclient
 		if err := core.Register(); err != nil {
 			log.Println("Failed to register:", err)
+			return nil, err
 		}
-		return nil, err
 	}
 	return core, nil
 }
@@ -92,6 +98,10 @@ func (core *DataNodeCore) Save(path string, data []byte, meta *tdfs.Metadata) er
 		return err
 	}
 
+	// 更新统计数据
+	core.fileNum++
+	core.traffic += int64(len(data))
+
 	return nil
 }
 
@@ -114,6 +124,10 @@ func (core *DataNodeCore) Get(path string) (*tdfs.File, error) {
 	if err != nil {
 		return nil, errors.New("Failed to decode metadata:" + metaPath)
 	}
+
+	// 更新统计数据
+	core.traffic += int64(len(data))
+
 	return &tdfs.File{
 		Data:     data,
 		Medatada: meta,
@@ -122,6 +136,8 @@ func (core *DataNodeCore) Get(path string) (*tdfs.File, error) {
 
 // scan 扫描本地所存储的文件
 func (core *DataNodeCore) Scan() (*MetaMap, error) {
+	core.fileNum = 0
+
 	mp := make(MetaMap)
 	err := filepath.Walk(core.root+META_PATH, func(path string, info fs.FileInfo, err error) error {
 		// 如果读到的是目录，不做任何操作
@@ -144,6 +160,11 @@ func (core *DataNodeCore) Scan() (*MetaMap, error) {
 			return err
 		}
 		mp[path] = &m
+
+		// 更新统计数据
+		core.fileNum++
+		core.usedSpace += m.Size
+
 		return nil
 	})
 	if err != nil {
@@ -166,4 +187,15 @@ func (core *DataNodeCore) Register() error {
 	}
 	log.Println(resp)
 	return nil
+}
+
+// 获取统计数据
+func (core *DataNodeCore) GetStat() *tdfs.DNStat {
+	stat := &tdfs.DNStat{
+		FileNum:    core.fileNum,
+		UsedSpace:  core.usedSpace,
+		TotalSpace: core.totalSpace,
+		Traffic:    core.traffic,
+	}
+	return stat
 }

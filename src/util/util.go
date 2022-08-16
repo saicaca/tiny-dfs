@@ -9,3 +9,13 @@ func GetKeys(m map[string]interface{}) []string {
 	}
 	return keys
 }
+
+func GetValues(m map[string]interface{}) interface{} {
+	values := make([]interface{}, len(m))
+	i := 0
+	for k := range m {
+		values[i] = m[k]
+		i++
+	}
+	return values
+}

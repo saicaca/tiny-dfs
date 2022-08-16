@@ -31,10 +31,11 @@ func main() {
 
 	// DataNode 启动配置
 	config := &DNConfig{
-		NNAddr:  nnaddr,
-		isTest:  false,
-		root:    "./playground/dn/",
-		localIP: transport.Addr().String(),
+		NNAddr:     nnaddr,
+		isTest:     false,
+		root:       "./playground/dn/",
+		localIP:    transport.Addr().String(),
+		totalSpace: 10 * 1024 * 1024 * 1024,
 	}
 	core, err := NewDataNodeCore(config)
 	if err != nil {

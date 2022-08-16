@@ -3,7 +3,7 @@ include "shared.thrift"
 namespace go tdfs
 
 service DataNode {
-    shared.Response Ping ()
+    shared.DNStat Ping ()
 
     shared.Response Heartbeat ()
 

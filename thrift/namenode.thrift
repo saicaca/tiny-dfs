@@ -9,8 +9,9 @@ service NameNode {
     )
 
     shared.Response Put (
-        1:required string local_file_path;
-        2:required string remote_file_path;
+        1:required string path;
+        2:required shared.Metadata metadata;
+        3:required string client_ip
     )
 
     shared.Response Get (

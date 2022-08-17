@@ -107,6 +107,11 @@ func (core *DataNodeCore) Save(path string, data []byte, meta *tdfs.Metadata) er
 		return err
 	}
 
+	_, err = core.nnclient.Put(context.Background(), filepath.Clean(path), meta, core.localIP)
+	if err != nil {
+		return err
+	}
+
 	// 更新统计数据
 	core.fileNum++
 	core.traffic += int64(len(data))

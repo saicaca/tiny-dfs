@@ -48,18 +48,18 @@ func (core *NameNodeCore) PutSingleFile(path string, meta *tdfs.Metadata, DNAddr
 
 	// 若此次 PUT 创建或更新了文件，且已经退出安全模式，则删除所有旧的文件副本，并复制新的副本
 	if res.Data["status"] == PUT_UPDATED && !core.isSafeMode {
-		lst := res.Data["toDelete"].(map[string]struct{})
+		lst := res.Data["toDelete"].(set)
 		for addr, _ := range lst {
 			core.RemoveReplicaFromDataNode(addr, path)
 		}
-		// TODO 复制副本
-
+		core.MakeReplica(path)
 	}
 }
 
 func (core *NameNodeCore) MakeReplica(path string) {
 	// 获取 INode，获取文件当前所在的 DN
 	DNSet := core.MetaTrie.GetFileNode(path).DNList
+	//log.Println("被复制文件所在DN：", DNSet)
 	// 获取可用的 DN 列表
 	avaiNodes := core.Registry.GetSpareDataNodes()
 	// 令 DN1 传输文件到 DN2
@@ -109,6 +109,7 @@ func (core *NameNodeCore) RemoveReplicaFromDataNode(addr string, path string) {
 // ExitSafeMode 在退出安全模式时执行的操作
 func (core *NameNodeCore) ExitSafeMode() {
 	log.Println("退出安全模式")
+	core.isSafeMode = false
 	// TODO 执行顺序有问题，应该先传完文件再执行这个
 	core.MetaTrie.WalkAllFiles(func(path string, fileNode *INode) {
 		if fileNode.Replica < 2 {

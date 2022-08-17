@@ -111,14 +111,14 @@ func (r *Registry) StartHeartBeat() {
 						r.deleteAction(item.Addr)
 					}
 				} else { // 连接 DataNode 成功
-					log.Println("DataNode", item.Addr, "连接正常")
+					//log.Println("DataNode", item.Addr, "连接正常")
 					item.start = time.Now()
 					stat, err := client.Ping(context.Background())
 					if err != nil {
 						log.Println("获取 DataNode 状态信息失败")
 					} else {
 						item.stat = stat // 保存 DataNode 状态数据
-						log.Println(stat)
+						//log.Println(stat)
 					}
 				}
 			}
@@ -147,8 +147,8 @@ func (r *Registry) GetSpareDataNodes() []string {
 		lst[i] = r.dnmap[key]
 		i++
 	}
-	fmt.Println("lst", lst)
-	fmt.Println("byRemain", byRemain(lst))
+	//fmt.Println("lst", lst)
+	//fmt.Println("byRemain", byRemain(lst))
 
 	sort.Sort(byRemain(lst))
 

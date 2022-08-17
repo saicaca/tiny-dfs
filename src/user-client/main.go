@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"path/filepath"
 	"tiny-dfs/gen-go/tdfs"
 	dnc "tiny-dfs/src/datanode-client"
+	nnc "tiny-dfs/src/namenode-client"
 )
 
 var defaultCtx = context.Background()
@@ -141,22 +143,24 @@ func main() {
 }
 
 func putFile(localPath string, remotePath string) {
-	DNAddr := "localhost:9090"
-	client, err := dnc.NewDataNodeClient(DNAddr)
+	nnClient := getNameNodeClient()
+	nodes, err := nnClient.GetSpareNodes(context.Background())
 	if err != nil {
-		log.Println("Failed to connect DataNode", DNAddr)
+		fmt.Println("获取 DataNodes 列表失败：", err)
+		return
 	}
-	log.Println("Connected to DataNode", DNAddr)
 
 	data, err := os.ReadFile(localPath)
 	if err != nil {
 		log.Println("Failed to load local file", localPath)
+		return
 	}
 
 	file, err := os.Open(localPath)
 	info, err := file.Stat()
 	if err != nil {
 		log.Println("Failed to load file info")
+		return
 	}
 
 	meta := &tdfs.Metadata{
@@ -165,11 +169,24 @@ func putFile(localPath string, remotePath string) {
 		Size:      info.Size(),
 	}
 
-	resp, err := client.Put(defaultCtx, remotePath, data, meta)
-	if err != nil {
-		log.Panicln("Put file error:", err)
+	for _, DNAddr := range nodes {
+		client, err := dnc.NewDataNodeClient(DNAddr)
+		if err != nil {
+			log.Println("Failed to connect DataNode", DNAddr)
+			continue
+		}
+		log.Println("Connected to DataNode", DNAddr)
+
+		_, err = client.Put(defaultCtx, remotePath, data, meta)
+		if err != nil {
+			log.Println("Put file error:", err)
+			continue
+		} else {
+			fmt.Println("成功上传", localPath, "到 DataNode", DNAddr)
+			break
+		}
 	}
-	log.Println(resp)
+
 }
 
 func getFile(remotePath string, localPath string) {
@@ -194,4 +211,29 @@ func getFile(remotePath string, localPath string) {
 	if err != nil {
 		log.Panicln("Failed to write file:", err)
 	}
+}
+
+func getNameNodeClient() *tdfs.NameNodeClient {
+	yfile, err := os.ReadFile("config.yml")
+	if err != nil {
+		fmt.Println("未找到配置文件 config.yml")
+		return nil
+	}
+	data := make(map[interface{}]interface{})
+	err2 := yaml.Unmarshal(yfile, &data)
+	if err2 != nil {
+		fmt.Println("解析配置文件失败", err2)
+		return nil
+	}
+
+	var client *tdfs.NameNodeClient
+	for _, addr := range data["namenode"].([]interface{}) {
+		client, err = nnc.NewNameNodeClient(addr.(string))
+		if client == nil || err != nil {
+			continue
+		} else {
+			break
+		}
+	}
+	return client
 }

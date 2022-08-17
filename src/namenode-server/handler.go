@@ -25,6 +25,11 @@ func (n NameNodeHandler) Register(ctx context.Context, meta_map map[string]*tdfs
 	return &tdfs.Response{Status: 200, Msg: "Register success"}, nil
 }
 
+func (n NameNodeHandler) GetSpareNodes(ctx context.Context) (_r []string, _err error) {
+	nodes := n.core.Registry.GetSpareDataNodes()
+	return nodes, nil
+}
+
 func (n NameNodeHandler) Put(ctx context.Context, path string, metadata *tdfs.Metadata, client_ip string) (_r *tdfs.Response, _err error) {
 	n.core.PutSingleFile(path, metadata, client_ip)
 	return &tdfs.Response{Status: 200, Msg: "Put success"}, nil

@@ -8,6 +8,8 @@ service NameNode {
         2:string client_ip
     )
 
+    list<string> GetSpareNodes ()
+
     shared.Response Put (
         1:required string path;
         2:required shared.Metadata metadata;

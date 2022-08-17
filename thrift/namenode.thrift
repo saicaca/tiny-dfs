@@ -10,10 +10,14 @@ service NameNode {
 
     list<string> GetSpareNodes ()
 
+    list<string> GetDataNodesWithFile (
+        1:required string file_path;
+    )
+
     shared.Response Put (
         1:required string path;
         2:required shared.Metadata metadata;
-        3:required string client_ip
+        3:required string client_ip;
     )
 
     shared.Response Get (

@@ -2,14 +2,11 @@ package nnc
 
 import (
 	"crypto/tls"
-	"fmt"
 	"github.com/apache/thrift/lib/go/thrift"
 	"tiny-dfs/gen-go/tdfs"
 )
 
 func NewNameNodeClient(addr string) (*tdfs.NameNodeClient, error) {
-	fmt.Println("running client")
-
 	var protocolFactory thrift.TProtocolFactory
 	protocolFactory = thrift.NewTBinaryProtocolFactoryConf(nil)
 

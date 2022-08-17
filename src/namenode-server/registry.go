@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sort"
 	"sync"
@@ -53,7 +52,6 @@ func (r *Registry) PutDataNode(addr string) {
 		var stat *tdfs.DNStat = nil
 		var err error
 		for stat == nil {
-			fmt.Println("looping")
 			client, err = dnc.NewDataNodeClient(addr) // 获取 DN Client
 			if err != nil {
 				continue

@@ -232,11 +232,11 @@ func (core *DataNodeCore) Register() error {
 		log.Panicln("Failed to scan files:", err)
 		return err
 	}
-	resp, err := core.nnclient.Register(defaultCtx, *metaMap, core.localIP)
+	_, err = core.nnclient.Register(defaultCtx, *metaMap, core.localIP)
 	if err != nil {
 		return err
 	}
-	log.Println(resp)
+	//log.Println(resp)
 	return nil
 }
 

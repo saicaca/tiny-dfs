@@ -30,7 +30,7 @@ func main() {
 					}
 					localPath := c.Args().Get(0)
 					remotePath := c.Args().Get(1)
-					fmt.Printf("Put a file from %s to %s\n", localPath, remotePath)
+					//fmt.Printf("Put a file from %s to %s\n", localPath, remotePath)
 					putFile(localPath, remotePath)
 					return nil
 				},
@@ -46,7 +46,7 @@ func main() {
 					}
 					remotePath := c.Args().Get(0)
 					localPath := c.Args().Get(1)
-					fmt.Printf("Download the file %s to %s\n", remotePath, localPath)
+					//fmt.Printf("Download the file %s to %s\n", remotePath, localPath)
 					getFile(remotePath, localPath)
 					return nil
 				},
@@ -175,7 +175,6 @@ func putFile(localPath string, remotePath string) {
 			log.Println("Failed to connect DataNode", DNAddr)
 			continue
 		}
-		log.Println("Connected to DataNode", DNAddr)
 
 		_, err = client.Put(defaultCtx, remotePath, data, meta)
 		if err != nil {
@@ -190,23 +189,40 @@ func putFile(localPath string, remotePath string) {
 }
 
 func getFile(remotePath string, localPath string) {
-	DNAddr := "localhost:9090"
-	client, err := dnc.NewDataNodeClient(DNAddr)
-	if err != nil {
-		log.Println("Failed to connect DataNode", DNAddr)
-	}
-	log.Println("Connected to DataNode", DNAddr)
 
-	resp, err := client.Get(defaultCtx, remotePath)
-	if err != nil {
-		log.Panicln("Failed to get file:", err)
-	}
-
+	// 确保本地文件夹存在
 	dir := filepath.Dir(localPath)
-	err = os.MkdirAll(dir, os.ModePerm)
+	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
-		log.Panicln("Failed to create directories:", err)
+		log.Panicln("创建本地文件夹失败:", err)
 	}
+
+	// 获取存有本文件的 DataNode 列表
+	nnClient := getNameNodeClient()
+	nodes, err := nnClient.GetDataNodesWithFile(context.Background(), remotePath) // TODO 获取存有文件的 DN 列表
+	if err != nil {
+		fmt.Println("获取 DataNodes 列表失败：", err)
+		return
+	}
+
+	// 尝试下载文件
+	var resp *tdfs.Response
+	for _, DNAddr := range nodes {
+		client, err := dnc.NewDataNodeClient(DNAddr)
+		if err != nil {
+			log.Println("Failed to connect DataNode", DNAddr)
+		}
+		//log.Println("Connected to DataNode", DNAddr)
+
+		resp, err = client.Get(defaultCtx, remotePath)
+		if err != nil {
+			log.Panicln("Failed to get file:", err)
+		} else {
+			fmt.Println("从 DataNodes", DNAddr, "下载", remotePath, "到", localPath)
+			break
+		}
+	}
+
 	err = os.WriteFile(localPath, resp.File.Data, 0777)
 	if err != nil {
 		log.Panicln("Failed to write file:", err)

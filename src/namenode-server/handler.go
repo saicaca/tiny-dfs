@@ -30,6 +30,15 @@ func (n NameNodeHandler) GetSpareNodes(ctx context.Context) (_r []string, _err e
 	return nodes, nil
 }
 
+func (n NameNodeHandler) GetDataNodesWithFile(ctx context.Context, file_path string) (_r []string, _err error) {
+	nodeSet := n.core.MetaTrie.GetFileNode(file_path).DNList
+	nodes := make([]string, 0)
+	for node, _ := range nodeSet {
+		nodes = append(nodes, node)
+	}
+	return nodes, nil
+}
+
 func (n NameNodeHandler) Put(ctx context.Context, path string, metadata *tdfs.Metadata, client_ip string) (_r *tdfs.Response, _err error) {
 	n.core.PutSingleFile(path, metadata, client_ip)
 	return &tdfs.Response{Status: 200, Msg: "Put success"}, nil

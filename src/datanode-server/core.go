@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"tiny-dfs/gen-go/tdfs"
+	dnc "tiny-dfs/src/datanode-client"
 	nnc "tiny-dfs/src/namenode-client"
 )
 
@@ -41,6 +42,14 @@ func NewDataNodeCore(config *DNConfig) (*DataNodeCore, error) {
 	core.fileNum = 0
 	core.usedSpace = 0
 	core.traffic = 0
+
+	// 创建存储目录
+	if err := os.MkdirAll(core.root+META_PATH, os.ModePerm); err != nil {
+		log.Fatalln("创建存储目录失败：", core.root+META_PATH)
+	}
+	if err := os.MkdirAll(core.root+DATA_PATH, os.ModePerm); err != nil {
+		log.Fatalln("创建存储目录失败：", core.root+DATA_PATH)
+	}
 
 	// 非本地测试模式，扫描文件并发送至 NameNode
 	if !config.isTest {
@@ -134,12 +143,47 @@ func (core *DataNodeCore) Get(path string) (*tdfs.File, error) {
 	}, nil
 }
 
+func (core *DataNodeCore) MakeReplica(target string, path string) {
+	if target == core.localIP {
+		return
+	}
+
+	file, err := core.Get(path)
+	if err != nil {
+		log.Panicln("创建副本时读取文件失败：", err)
+	}
+
+	receiveClient, err := dnc.NewDataNodeClient(target)
+	if err != nil {
+		log.Panicln("创建副本时连接目标 DataNode 失败：", err)
+	}
+	_, err = receiveClient.ReceiveReplica(context.Background(), path, file)
+	if err != nil {
+		log.Panicln("创建副本时复制文件失败：", err)
+	}
+}
+
+func (core *DataNodeCore) Delete(path string) {
+	dataPath := core.root + DATA_PATH + path
+	metaPath := core.root + META_PATH + path + META_EXTENSION
+	if err := os.Remove(dataPath); err != nil {
+		log.Println("删除文件", path, "失败：", err)
+	}
+	if err := os.Remove(metaPath); err != nil {
+		log.Println("删除元数据", path, "失败：", err)
+	}
+}
+
 // scan 扫描本地所存储的文件
 func (core *DataNodeCore) Scan() (*MetaMap, error) {
 	core.fileNum = 0
 
 	mp := make(MetaMap)
+
+	fmt.Println(core.root + META_PATH)
+
 	err := filepath.Walk(core.root+META_PATH, func(path string, info fs.FileInfo, err error) error {
+
 		// 如果读到的是目录，不做任何操作
 		if info.IsDir() {
 			return nil
@@ -159,7 +203,9 @@ func (core *DataNodeCore) Scan() (*MetaMap, error) {
 			fmt.Println("decode metadata failed:", err)
 			return err
 		}
-		mp[path] = &m
+
+		remotePath := path[len(filepath.Clean(core.root+META_PATH)) : len(path)-len(META_EXTENSION)] // 去除本地路径前缀，去除元文件扩展名
+		mp[remotePath] = &m
 
 		// 更新统计数据
 		core.fileNum++

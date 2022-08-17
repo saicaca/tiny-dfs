@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sort"
 	"sync"
@@ -18,10 +19,13 @@ type DNItem struct {
 }
 
 type Registry struct {
-	timeout      time.Duration
-	mu           sync.Mutex
-	dnmap        map[string]*DNItem
-	deleteAction func(addr string)
+	timeout        time.Duration
+	mu             sync.Mutex
+	dnmap          map[string]*DNItem
+	minReplica     int               // 最小副本数量
+	dnCount        int               // 当前连接的 DN 数量
+	deleteAction   func(addr string) // DN 被移除时执行的操作
+	registerAction func()            // DN 注册时执行的操作
 }
 
 const (
@@ -33,31 +37,44 @@ func NewRegistry(timeout time.Duration, deleteAction func(addr string)) *Registr
 		dnmap:        make(map[string]*DNItem),
 		timeout:      timeout,
 		deleteAction: deleteAction,
+		dnCount:      0,
 	}
 	registry.StartHeartBeat() // 开始心跳检测
 	return registry
 }
 
-func (r *Registry) PutDataNode(addr string) error {
+func (r *Registry) PutDataNode(addr string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	s := r.dnmap[addr]
 	if s == nil { // DN 未注册
-		// TODO 暂时停用DN客户端创建
-		//client, err := dnc.NewDataNodeClient(addr) // 获取 DN Client
-		//if err != nil {
-		//	log.Panicln("Failed to create DataNodeClient", err)
-		//	return err
-		//}
+		// TODO 因为 DataNodeCore 初始化并注册的时候，服务器并未启动，调用 Ping 获取 Stat 会无法连接，暂时采用循环等待的方法
+		var client *tdfs.DataNodeClient
+		var stat *tdfs.DNStat = nil
+		var err error
+		for stat == nil {
+			fmt.Println("looping")
+			client, err = dnc.NewDataNodeClient(addr) // 获取 DN Client
+			if err != nil {
+				continue
+			}
+			stat, err = client.Ping(context.Background())
+			if err != nil {
+				continue
+			}
+		}
 		r.dnmap[addr] = &DNItem{
 			Addr:   addr,
 			start:  time.Now(),
 			client: nil,
+			stat:   stat,
 		}
+		r.dnCount++
+		r.registerAction()
 	} else {
 		s.start = time.Now()
 	}
-	return nil
+	//return nil
 }
 
 func (r *Registry) AliveDataNodes(deleteAction func(addr string)) []string {
@@ -90,6 +107,7 @@ func (r *Registry) StartHeartBeat() {
 					if item.start.Add(time.Second * 20).Before(time.Now()) {
 						log.Println("DataNode", item.Addr, "长时间无法连接，移除节点")
 						delete(r.dnmap, item.Addr)
+						r.dnCount--
 						r.deleteAction(item.Addr)
 					}
 				} else { // 连接 DataNode 成功
@@ -106,7 +124,6 @@ func (r *Registry) StartHeartBeat() {
 			}
 		}
 	}()
-
 }
 
 type byRemain []*DNItem
@@ -123,17 +140,28 @@ func (s byRemain) Less(i, j int) bool { // 按剩余空间大小排序
 	return remain1 > remain2 // 从大到小排序
 }
 func (r *Registry) GetSpareDataNodes() []string {
+	// 将所有 DataNode 按剩余空间大小排序
 	lst := make(byRemain, len(r.dnmap))
 	i := 0
 	for key := range r.dnmap {
 		lst[i] = r.dnmap[key]
 		i++
 	}
+	fmt.Println("lst", lst)
+	fmt.Println("byRemain", byRemain(lst))
+
 	sort.Sort(byRemain(lst))
 
-	ipList := make([]string, 3)
-	for i := 0; i < 3; i++ {
-		ipList[i] = lst[i].Addr
+	ipList := make([]string, 0)
+	for i := 0; i < min(len(r.dnmap), 3); i++ {
+		ipList = append(ipList, lst[i].Addr)
 	}
 	return ipList
+}
+
+func min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
 }

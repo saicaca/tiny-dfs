@@ -16,6 +16,20 @@ func NewDataNodeHandler(core *DataNodeCore) *DataNodeHandler {
 	}
 }
 
+func (d *DataNodeHandler) MakeReplica(ctx context.Context, target_addr string, file_path string) (_r *tdfs.Response, _err error) {
+	d.core.MakeReplica(target_addr, file_path)
+	return &tdfs.Response{Status: 200, Msg: "MakeReplica ok"}, nil
+}
+
+func (d *DataNodeHandler) ReceiveReplica(ctx context.Context, file_path string, file *tdfs.File) (_r *tdfs.Response, _err error) {
+	err := d.core.Save(file_path, file.Data, file.Medatada)
+	if err != nil {
+		log.Println("创建副本时新建文件失败：", err)
+		return &tdfs.Response{Status: 500, Msg: "ReceiveReplica Failed"}, err
+	}
+	return &tdfs.Response{Status: 200, Msg: "ReceiveReplica ok"}, nil
+}
+
 func (d *DataNodeHandler) Ping(ctx context.Context) (_r *tdfs.DNStat, _err error) {
 	return d.core.GetStat(), nil
 }
@@ -44,6 +58,6 @@ func (d *DataNodeHandler) Get(ctx context.Context, remote_file_path string) (_r 
 }
 
 func (d *DataNodeHandler) Delete(ctx context.Context, remote_file_path string) (_r *tdfs.Response, _err error) {
-	//TODO implement me
-	panic("implement me")
+	d.core.Delete(remote_file_path)
+	return &tdfs.Response{Status: 200}, nil
 }

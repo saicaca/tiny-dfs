@@ -12,6 +12,7 @@ import (
 func main() {
 	// 获取运行参数 {addr}
 	port := flag.String("port", "19200", "Port to listen to")
+	root := flag.String("root", "./playground/dn1/", "Directories to store data")
 	flag.Usage = Usage
 	flag.Parse()
 
@@ -33,10 +34,13 @@ func main() {
 	config := &DNConfig{
 		NNAddr:     nnaddr,
 		isTest:     false,
-		root:       "./playground/dn/",
+		root:       *root,
 		localIP:    transport.Addr().String(),
 		totalSpace: 10 * 1024 * 1024 * 1024,
 	}
+
+	fmt.Println("启动配置", *config)
+
 	core, err := NewDataNodeCore(config)
 	if err != nil {
 		log.Println("Failed to create DataNodeCore:", err)

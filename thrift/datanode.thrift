@@ -20,4 +20,14 @@ service DataNode {
     shared.Response Delete (
         1:required string remote_file_path;
     )
+
+    shared.Response MakeReplica (
+        1:required string target_addr;
+        2:required string file_path;
+    )
+
+    shared.Response ReceiveReplica (
+        1:required string file_path;
+        2:required shared.File file;
+    )
 }

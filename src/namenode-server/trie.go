@@ -114,10 +114,12 @@ func (t *PathTrie) PutFile(path string, DNAddr string, meta *tdfs.Metadata) (*sh
 	newModTime := meta.Mtime
 	if newModTime > currModTime { // PUT 的文件比现有版本新或为新建文件，更新现存的所有副本
 		result.Data["status"] = PUT_UPDATED
-		if dirNode.Children[fileName] != nil { // 文件存在，将当前所有副本所在节点放入待更新列表
-			result.Data["toUpdate"] = dirNode.Children[fileName].DNList
+		if dirNode.Children[fileName] != nil { // 文件存在，将当前所有副本所在节点放入待删除
+			toDeleteSet := dirNode.Children[fileName].DNList
+			delete(toDeleteSet, DNAddr)
+			result.Data["toDelete"] = toDeleteSet
 		} else { // 新建文件，待更新列表为空列表
-			result.Data["toUpdate"] = make(set)
+			result.Data["toDelete"] = make(set)
 		}
 
 		// 新建 INode
@@ -146,7 +148,17 @@ func (t *PathTrie) PutFile(path string, DNAddr string, meta *tdfs.Metadata) (*sh
 	return result, nil
 }
 
-// RemoveByDN 移除指定 DN 下所有文件，返回副本数量低于最低值的文件列表
+func (t *PathTrie) GetFileNode(path string) *INode {
+	dir, fileName := filepath.Split(path)
+	dirNode, err := t.getDir(dir, true)
+	if err != nil {
+		log.Println("获取文件", path, "失败：", err)
+		return nil
+	}
+	return dirNode.Children[fileName]
+}
+
+// RemoveByDN 从 trie 中移除指定 DN 下所有文件信息（用于 DN 断连的情况），返回副本数量低于最低值的文件列表
 func (t *PathTrie) RemoveByDN(DNAddr string) (*shared.Result, error) {
 	fileList := t.filesByDN[DNAddr]
 
@@ -191,6 +203,23 @@ func (t *PathTrie) List(path string) {
 		} else {
 			fmt.Printf("%s\t\tFILE\n", path+name)
 		}
+	}
+}
+
+func (t *PathTrie) WalkAllFiles(action func(path string, fileNode *INode)) {
+	t.doWithAllFiles(t.root, "", action)
+}
+
+func (t *PathTrie) doWithAllFiles(node *INode, currPath string, action func(path string, fileNode *INode)) {
+	if node == nil {
+		return
+	}
+	if node.IsDir {
+		for childName, nextNode := range node.Children {
+			t.doWithAllFiles(nextNode, currPath+"\\"+childName, action)
+		}
+	} else {
+		action(currPath, node)
 	}
 }
 

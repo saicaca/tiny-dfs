@@ -58,3 +58,28 @@ func TestSlice(t *testing.T) {
 	sl = append(sl, "114514")
 	fmt.Println(sl)
 }
+
+// 测试更新文件
+func TestDelete(t *testing.T) {
+	trie := NewPathTrie()
+	trie.PutFile("alice.txt", "192.168.0.1", &tdfs.Metadata{Mtime: 1000})
+	trie.PutFile("alice.txt", "192.168.0.2", &tdfs.Metadata{Mtime: 1000})
+	trie.PutFile("alice.txt", "192.168.0.3", &tdfs.Metadata{Mtime: 1000})
+	res, _ := trie.PutFile("alice.txt", "192.168.0.4", &tdfs.Metadata{Mtime: 2000})
+	fmt.Println(res)
+}
+
+func TestGetEmpty(t *testing.T) {
+	mp := make(map[string]*INode)
+	fmt.Println(mp["hello"])
+}
+
+func TestGetNode(t *testing.T) {
+	trie := NewPathTrie()
+	trie.PutFile("alice.txt", "192.168.0.1", &tdfs.Metadata{Mtime: 1000})
+	trie.PutFile("alice.txt", "192.168.0.2", &tdfs.Metadata{Mtime: 1000})
+	trie.PutFile("alice.txt", "192.168.0.3", &tdfs.Metadata{Mtime: 1000})
+	_, _ = trie.PutFile("alice.txt", "192.168.0.4", &tdfs.Metadata{Mtime: 2000})
+	fmt.Println(trie.GetFileNode("alice.txt"))
+
+}

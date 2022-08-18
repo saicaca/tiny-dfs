@@ -248,8 +248,10 @@ func (core *DataNodeCore) Scan() (*MetaMap, error) {
 		mp[remotePath] = &m
 
 		// 更新统计数据
-		core.fileNum++
-		core.usedSpace += m.Size
+		if !m.IsDeleted {
+			core.fileNum++
+			core.usedSpace += m.Size
+		}
 
 		return nil
 	})

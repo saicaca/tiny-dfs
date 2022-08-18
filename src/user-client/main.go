@@ -140,6 +140,16 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:    "datanodes",
+				Aliases: []string{"dn"},
+				Usage:   "List all the DataNodes",
+				Flags:   []cli.Flag{},
+				Action: func(c *cli.Context) error {
+					listDataNodes()
+					return nil
+				},
+			},
 		},
 		UseShortOptionHandling: true,
 	}
@@ -306,6 +316,33 @@ func mkdirAll(path string) {
 		return
 	}
 	fmt.Println("路径", path, "可用")
+}
+
+func listDataNodes() {
+	nnClient := getNameNodeClient()
+	mp, err := nnClient.ListDataNode(context.Background())
+	if err != nil {
+		fmt.Println("获取 DataNodes 信息失败：", err)
+		return
+	}
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"#", "运行地址", "最近活动时间", "文件数量", "已用空间", "总分配空间", "空间使用率", "流量"})
+	i := 1
+	for addr, stat := range mp {
+		t.AppendRow(table.Row{
+			i,
+			addr,
+			time.UnixMilli(stat.StartTime).String(),
+			stat.FileNum,
+			util.FormatSize(stat.UsedSpace),
+			util.FormatSize(stat.TotalSpace),
+			fmt.Sprintf("%.2f %%", float64(stat.UsedSpace)/float64(stat.TotalSpace)),
+			util.FormatSize(stat.Traffic),
+		})
+		i++
+	}
+	t.Render()
 }
 
 func getNameNodeClient() *tdfs.NameNodeClient {

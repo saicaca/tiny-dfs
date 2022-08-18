@@ -73,6 +73,10 @@ func (n NameNodeHandler) List(ctx context.Context, remote_dir_path string) (_r m
 	return res, nil
 }
 
+func (n NameNodeHandler) ListDataNode(ctx context.Context) (_r map[string]*tdfs.DNStat, _err error) {
+	return n.core.Registry.GetDNStats(), nil
+}
+
 func (n NameNodeHandler) Put(ctx context.Context, path string, metadata *tdfs.Metadata, client_ip string) (_r *tdfs.Response, _err error) {
 	n.core.PutSingleFile(path, metadata, client_ip)
 	return &tdfs.Response{Status: 200, Msg: "Put success"}, nil

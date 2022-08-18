@@ -38,6 +38,8 @@ service NameNode {
         1:required string remote_file_path;
     )
 
+    map<string, shared.DNStat> ListDataNode()
+
     void Mkdir (
         1:required string remote_file_path;
     )

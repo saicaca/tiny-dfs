@@ -23,6 +23,7 @@ struct DNStat {
     2: i64 usedSpace;
     3: i64 totalSpace;
     4: i64 traffic;
+    5: i64 startTime;
 }
 
 struct FileStat {

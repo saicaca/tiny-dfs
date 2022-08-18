@@ -124,6 +124,16 @@ func (r *Registry) StartHeartBeat() {
 	}()
 }
 
+func (r *Registry) GetDNStats() map[string]*tdfs.DNStat {
+	res := make(map[string]*tdfs.DNStat)
+	for addr, item := range r.dnmap {
+		stat := item.stat
+		stat.StartTime = item.start.UnixMilli()
+		res[addr] = stat
+	}
+	return res
+}
+
 type byRemain []*DNItem
 
 func (s byRemain) Len() int {

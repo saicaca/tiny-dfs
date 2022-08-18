@@ -112,6 +112,33 @@ func (core *DataNodeCore) Save(path string, data []byte, meta *tdfs.Metadata) er
 	return nil
 }
 
+func (core *DataNodeCore) Move(oldPath string, newPath string, requestTime int64) error {
+	_, newFileName := filepath.Split(newPath)
+
+	// 向新的路径保存文件
+	file, err := core.Get(oldPath)
+	if err != nil {
+		return err
+	}
+	newMetadata := *file.Medatada
+	newMetadata.Name = newFileName
+	newMetadata.Mtime = requestTime
+	err = core.Save(newPath, file.Data, &newMetadata)
+	if err != nil {
+		return err
+	}
+
+	// 对旧路径标记删除
+	file.Medatada.IsDeleted = true
+	file.Medatada.Size = 0
+	file.Medatada.Mtime = requestTime
+	err = core.writeMetadata(core.root+META_PATH+oldPath+META_EXTENSION, file.Medatada)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (core *DataNodeCore) Get(path string) (*tdfs.File, error) {
 	dataPath := core.root + DATA_PATH + path
 	data, err := os.ReadFile(dataPath)
@@ -264,13 +291,13 @@ func (core *DataNodeCore) writeMetadata(path string, meta *tdfs.Metadata) error 
 	metaFile, err := os.Create(path)
 	defer metaFile.Close()
 	if err != nil {
-		fmt.Println("create metadata failed:", err)
+		log.Println("create metadata failed:", err)
 		return err
 	}
 	enc := gob.NewEncoder(metaFile)
 	err = enc.Encode(*meta)
 	if err != nil {
-		fmt.Println("write metadata failed:", err)
+		log.Println("write metadata failed:", err)
 		return err
 	}
 	return nil

@@ -22,6 +22,12 @@ service DataNode {
         2:required shared.Metadata metadata;
     )
 
+    void MoveFile(
+        1:required string old_path;
+        2:required string new_path;
+        3:required i64 request_time;
+    )
+
     shared.Response Delete (
         1:required string remote_file_path;
     )

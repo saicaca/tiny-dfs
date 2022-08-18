@@ -42,7 +42,7 @@ service NameNode {
         1:required string remote_file_path;
     )
 
-    shared.Response Rename (
+    void Rename (
         1:required string rename_src_path;
         2:required string rename_dest_path;
     )

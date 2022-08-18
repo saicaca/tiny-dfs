@@ -98,7 +98,7 @@ func main() {
 			},
 			{
 				Name:    "rename",
-				Aliases: []string{},
+				Aliases: []string{"mv"},
 				Usage:   "Rename a file on DFS",
 				Flags:   []cli.Flag{},
 				Action: func(c *cli.Context) error {
@@ -107,7 +107,8 @@ func main() {
 					}
 					srcPath := c.Args().Get(0)
 					destPath := c.Args().Get(1)
-					fmt.Printf("Rename %s to %s\n", srcPath, destPath)
+					//fmt.Printf("Rename %s to %s\n", srcPath, destPath)
+					move(srcPath, destPath)
 					return nil
 				},
 			},
@@ -201,7 +202,7 @@ func getFile(remotePath string, localPath string) {
 
 	// 获取存有本文件的 DataNode 列表
 	nnClient := getNameNodeClient()
-	nodes, err := nnClient.GetDataNodesWithFile(context.Background(), remotePath) // TODO 获取存有文件的 DN 列表
+	nodes, err := nnClient.GetDataNodesWithFile(context.Background(), remotePath)
 	if err != nil {
 		fmt.Println("获取 DataNodes 列表失败：", err)
 		return
@@ -236,6 +237,14 @@ func deleteFile(remotePath string) {
 	err := nnClient.Delete(context.Background(), remotePath)
 	if err != nil {
 		fmt.Println("删除文件失败：", err)
+	}
+}
+
+func move(oldPath string, newPath string) {
+	nnClient := getNameNodeClient()
+	err := nnClient.Rename(context.Background(), oldPath, newPath)
+	if err != nil {
+		fmt.Println("移动/重命名文件失败：", err)
 	}
 }
 

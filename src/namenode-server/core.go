@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"path/filepath"
 	"time"
 	"tiny-dfs/gen-go/tdfs"
 	dnc "tiny-dfs/src/datanode-client"
@@ -63,6 +65,60 @@ func (core *NameNodeCore) SetDeleted(path string) error {
 	meta.IsDeleted = true
 	err := core.UpdateMetadata(path, &meta)
 	return err
+}
+
+func (core *NameNodeCore) Move(originPath string, newPath string) error {
+	newDir, newFileName := filepath.Split(newPath)
+
+	// 获取被移动文件信息
+	oldNode := core.MetaTrie.GetFileNode(originPath)
+	if oldNode == nil {
+		return errors.New("文件 " + originPath + " 不存在")
+	}
+
+	// 获取新的所在目录节点
+	dir, err := core.MetaTrie.getDir(newDir, true)
+	if err != nil {
+		return err
+	}
+
+	// 检查是否已存在同名文件
+	nodeToWrite := core.MetaTrie.GetFileNode(newPath)
+	if core.MetaTrie.GetFileNode(newPath) != nil && !nodeToWrite.Meta.IsDeleted {
+		return errors.New("路径非法：文件 " + newPath + " 已存在")
+	}
+
+	now := time.Now().Unix()
+
+	newMetadata := oldNode.Meta
+	newMetadata.Mtime = now
+	newMetadata.Name = newFileName
+	newMetadata.IsDeleted = false
+	dir.Children[newFileName] = &INode{
+		IsDir:    false,
+		Replica:  0,
+		DNList:   make(set),
+		Meta:     newMetadata,
+		Children: make(map[string]*INode),
+	}
+
+	// 修改原节点元数据
+	oldNode.Meta.Mtime = now
+	oldNode.Meta.Size = 0
+	oldNode.Meta.IsDeleted = true
+
+	// 令 DataNode 移动文件
+	for addr, _ := range oldNode.DNList {
+		dnclient, err := dnc.NewDataNodeClient(addr)
+		if err != nil {
+			return err
+		}
+		err = dnclient.MoveFile(context.Background(), originPath, newPath, now)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (core *NameNodeCore) UpdateMetadata(path string, metadata *tdfs.Metadata) error {

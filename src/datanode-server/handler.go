@@ -16,6 +16,11 @@ func NewDataNodeHandler(core *DataNodeCore) *DataNodeHandler {
 	}
 }
 
+func (d *DataNodeHandler) MoveFile(ctx context.Context, old_path string, new_path string, request_time int64) (_err error) {
+	err := d.core.Move(old_path, new_path, request_time)
+	return err
+}
+
 func (d *DataNodeHandler) MakeReplica(ctx context.Context, target_addr string, file_path string) (_r *tdfs.Response, _err error) {
 	d.core.MakeReplica(target_addr, file_path)
 	return &tdfs.Response{Status: 200, Msg: "MakeReplica ok"}, nil

@@ -57,6 +57,14 @@ func (n NameNodeHandler) UpdateMetadata(ctx context.Context, file_path string, m
 	return err
 }
 
+func (n NameNodeHandler) Stat(ctx context.Context, remote_file_path string) (_r *tdfs.Metadata, _err error) {
+	node := n.core.MetaTrie.GetFileNode(remote_file_path)
+	if node == nil {
+		return nil, errors.New("文件 " + remote_file_path + "不存在")
+	}
+	return &node.Meta, nil
+}
+
 func (n NameNodeHandler) Put(ctx context.Context, path string, metadata *tdfs.Metadata, client_ip string) (_r *tdfs.Response, _err error) {
 	n.core.PutSingleFile(path, metadata, client_ip)
 	return &tdfs.Response{Status: 200, Msg: "Put success"}, nil
@@ -73,11 +81,6 @@ func (n NameNodeHandler) Delete(ctx context.Context, remote_file_path string) (_
 		log.Println("删除文件", remote_file_path, "失败：", err)
 	}
 	return err
-}
-
-func (n NameNodeHandler) Stat(ctx context.Context, remote_file_path string) (_r *tdfs.Response, _err error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (n NameNodeHandler) Mkdir(ctx context.Context, remote_file_path string) (_err error) {

@@ -34,7 +34,7 @@ service NameNode {
         1:required string remote_file_path;
     )
 
-    shared.Response Stat (
+    shared.Metadata Stat (
         1:required string remote_file_path;
     )
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"tiny-dfs/gen-go/tdfs"
 	dnc "tiny-dfs/src/datanode-client"
 	nnc "tiny-dfs/src/namenode-client"
+	"tiny-dfs/src/util"
 )
 
 var defaultCtx = context.Background()
@@ -77,7 +79,8 @@ func main() {
 						return errors.New("参数数量错误")
 					}
 					remotePath := c.Args().Get(0)
-					fmt.Printf("Show the metadata of file %s\n", remotePath)
+					//fmt.Printf("Show the metadata of file %s\n", remotePath)
+					stat(remotePath)
 					return nil
 				},
 			},
@@ -169,7 +172,8 @@ func putFile(localPath string, remotePath string) {
 
 	meta := &tdfs.Metadata{
 		IsDeleted: false,
-		Mtime:     time.Now().Unix(),
+		Name:      filepath.Base(remotePath),
+		Mtime:     time.Now().UnixMilli(),
 		Size:      info.Size(),
 	}
 
@@ -246,6 +250,22 @@ func move(oldPath string, newPath string) {
 	if err != nil {
 		fmt.Println("移动/重命名文件失败：", err)
 	}
+}
+
+func stat(path string) {
+	nnClient := getNameNodeClient()
+	meta, err := nnClient.Stat(context.Background(), path)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"文件名称", "修改时间", "文件大小"})
+	t.AppendRows([]table.Row{
+		{meta.Name, time.UnixMilli(meta.Mtime).String(), util.FormatSize(meta.Size)},
+	})
+	t.Render()
 }
 
 func mkdirAll(path string) {

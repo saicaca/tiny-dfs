@@ -61,7 +61,7 @@ func (core *NameNodeCore) PutSingleFile(path string, meta *tdfs.Metadata, DNAddr
 func (core *NameNodeCore) SetDeleted(path string) error {
 	node := core.MetaTrie.GetFileNode(path)
 	meta := node.Meta
-	meta.Mtime = time.Now().Unix()
+	meta.Mtime = time.Now().UnixMilli()
 	meta.IsDeleted = true
 	err := core.UpdateMetadata(path, &meta)
 	return err
@@ -88,7 +88,7 @@ func (core *NameNodeCore) Move(originPath string, newPath string) error {
 		return errors.New("路径非法：文件 " + newPath + " 已存在")
 	}
 
-	now := time.Now().Unix()
+	now := time.Now().UnixMilli()
 
 	newMetadata := oldNode.Meta
 	newMetadata.Mtime = now

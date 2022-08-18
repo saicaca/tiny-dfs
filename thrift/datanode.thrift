@@ -17,6 +17,11 @@ service DataNode {
         1:required string remote_file_path;
     )
 
+    void UpdateMetadata(
+        1:required string path;
+        2:required shared.Metadata metadata;
+    )
+
     shared.Response Delete (
         1:required string remote_file_path;
     )

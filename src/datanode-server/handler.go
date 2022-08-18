@@ -30,6 +30,11 @@ func (d *DataNodeHandler) ReceiveReplica(ctx context.Context, file_path string, 
 	return &tdfs.Response{Status: 200, Msg: "ReceiveReplica ok"}, nil
 }
 
+func (d *DataNodeHandler) UpdateMetadata(ctx context.Context, path string, metadata *tdfs.Metadata) (_err error) {
+	err := d.core.UpdateFile(path, metadata, nil)
+	return err
+}
+
 func (d *DataNodeHandler) Ping(ctx context.Context) (_r *tdfs.DNStat, _err error) {
 	return d.core.GetStat(), nil
 }

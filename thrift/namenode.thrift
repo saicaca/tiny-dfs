@@ -14,6 +14,11 @@ service NameNode {
         1:required string file_path;
     )
 
+    void UpdateMetadata (
+        1:required string file_path;
+        2:required shared.Metadata metadata;
+    )
+
     shared.Response Put (
         1:required string path;
         2:required shared.Metadata metadata;
@@ -25,7 +30,7 @@ service NameNode {
         2:required string local_file_path;
     )
 
-    shared.Response Delete (
+    void Delete (
         1:required string remote_file_path;
     )
 

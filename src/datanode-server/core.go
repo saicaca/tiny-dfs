@@ -94,16 +94,9 @@ func (core *DataNodeCore) Save(path string, data []byte, meta *tdfs.Metadata) er
 	}
 
 	// 保存元文件
-	metaFile, err := os.Create(metaPath)
-	defer metaFile.Close()
+	err = core.writeMetadata(metaPath, meta)
 	if err != nil {
-		fmt.Println("create metadata failed:", err)
-		return err
-	}
-	enc := gob.NewEncoder(metaFile)
-	err = enc.Encode(*meta)
-	if err != nil {
-		fmt.Println("write metadata failed:", err)
+		fmt.Println("向", metaPath, "写入元数据失败：", err)
 		return err
 	}
 
@@ -146,6 +139,21 @@ func (core *DataNodeCore) Get(path string) (*tdfs.File, error) {
 		Data:     data,
 		Medatada: meta,
 	}, nil
+}
+
+func (core *DataNodeCore) UpdateFile(path string, metadata *tdfs.Metadata, data []byte) error {
+	if metadata != nil {
+		metaPath := core.root + META_PATH + path + META_EXTENSION
+		err := core.writeMetadata(metaPath, metadata)
+		if err != nil {
+			return err
+		}
+	}
+
+	if data != nil {
+		// TODO 更新文件
+	}
+	return nil
 }
 
 func (core *DataNodeCore) MakeReplica(target string, path string) {
@@ -249,4 +257,21 @@ func (core *DataNodeCore) GetStat() *tdfs.DNStat {
 		Traffic:    core.traffic,
 	}
 	return stat
+}
+
+// 保存元数据文件
+func (core *DataNodeCore) writeMetadata(path string, meta *tdfs.Metadata) error {
+	metaFile, err := os.Create(path)
+	defer metaFile.Close()
+	if err != nil {
+		fmt.Println("create metadata failed:", err)
+		return err
+	}
+	enc := gob.NewEncoder(metaFile)
+	err = enc.Encode(*meta)
+	if err != nil {
+		fmt.Println("write metadata failed:", err)
+		return err
+	}
+	return nil
 }

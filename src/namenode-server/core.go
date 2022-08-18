@@ -56,6 +56,36 @@ func (core *NameNodeCore) PutSingleFile(path string, meta *tdfs.Metadata, DNAddr
 	}
 }
 
+func (core *NameNodeCore) SetDeleted(path string) error {
+	node := core.MetaTrie.GetFileNode(path)
+	meta := node.Meta
+	meta.Mtime = time.Now().Unix()
+	meta.IsDeleted = true
+	err := core.UpdateMetadata(path, &meta)
+	return err
+}
+
+func (core *NameNodeCore) UpdateMetadata(path string, metadata *tdfs.Metadata) error {
+	node := core.MetaTrie.GetFileNode(path)
+	node.Meta = *metadata
+
+	successList := make(set)
+	for addr, _ := range node.DNList {
+		client, err := dnc.NewDataNodeClient(addr)
+		if err != nil {
+			log.Println("更新文件元数据时创建 DataNode 客户端", addr, "失败：", err)
+			continue
+		}
+		err = client.UpdateMetadata(context.Background(), path, metadata)
+		if err != nil {
+			return err
+		}
+		successList[addr] = void
+	}
+	node.DNList = successList // 更新成功的节点
+	return nil
+}
+
 func (core *NameNodeCore) MakeReplica(path string) {
 	// 获取 INode，获取文件当前所在的 DN
 	DNSet := core.MetaTrie.GetFileNode(path).DNList

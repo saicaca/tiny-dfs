@@ -53,7 +53,7 @@ func main() {
 			},
 			{
 				Name:    "delete",
-				Aliases: []string{"d"},
+				Aliases: []string{"d", "rm"},
 				Usage:   "Delete a file on DFS",
 				Flags:   []cli.Flag{},
 				Action: func(c *cli.Context) error {
@@ -61,7 +61,8 @@ func main() {
 						return errors.New("参数数量错误")
 					}
 					remotePath := c.Args().Get(0)
-					fmt.Printf("Delete a file %s\n", remotePath)
+					deleteFile(remotePath)
+					//fmt.Printf("Delete a file %s\n", remotePath)
 					return nil
 				},
 			},
@@ -185,7 +186,6 @@ func putFile(localPath string, remotePath string) {
 			break
 		}
 	}
-
 }
 
 func getFile(remotePath string, localPath string) {
@@ -226,6 +226,14 @@ func getFile(remotePath string, localPath string) {
 	err = os.WriteFile(localPath, resp.File.Data, 0777)
 	if err != nil {
 		log.Panicln("Failed to write file:", err)
+	}
+}
+
+func deleteFile(remotePath string) {
+	nnClient := getNameNodeClient()
+	err := nnClient.Delete(context.Background(), remotePath)
+	if err != nil {
+		fmt.Println("删除文件失败：", err)
 	}
 }
 

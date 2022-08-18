@@ -38,7 +38,7 @@ service NameNode {
         1:required string remote_file_path;
     )
 
-    shared.Response Mkdir (
+    void Mkdir (
         1:required string remote_file_path;
     )
 

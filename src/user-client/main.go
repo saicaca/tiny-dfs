@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 	"tiny-dfs/gen-go/tdfs"
 	dnc "tiny-dfs/src/datanode-client"
 	nnc "tiny-dfs/src/namenode-client"
@@ -90,7 +91,8 @@ func main() {
 						return errors.New("参数数量错误")
 					}
 					remotePath := c.Args().Get(0)
-					fmt.Printf("Create directories %s\n", remotePath)
+					//fmt.Printf("Create directories %s\n", remotePath)
+					mkdirAll(remotePath)
 					return nil
 				},
 			},
@@ -166,7 +168,7 @@ func putFile(localPath string, remotePath string) {
 
 	meta := &tdfs.Metadata{
 		IsDeleted: false,
-		Mtime:     info.ModTime().Unix(),
+		Mtime:     time.Now().Unix(),
 		Size:      info.Size(),
 	}
 
@@ -235,6 +237,16 @@ func deleteFile(remotePath string) {
 	if err != nil {
 		fmt.Println("删除文件失败：", err)
 	}
+}
+
+func mkdirAll(path string) {
+	nnClient := getNameNodeClient()
+	err := nnClient.Mkdir(context.Background(), path)
+	if err != nil {
+		fmt.Println("创建目录失败，路径上存在同名文件：", err)
+		return
+	}
+	fmt.Println("路径", path, "可用")
 }
 
 func getNameNodeClient() *tdfs.NameNodeClient {

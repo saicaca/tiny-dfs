@@ -80,9 +80,9 @@ func (n NameNodeHandler) Stat(ctx context.Context, remote_file_path string) (_r 
 	panic("implement me")
 }
 
-func (n NameNodeHandler) Mkdir(ctx context.Context, remote_file_path string) (_r *tdfs.Response, _err error) {
-	//TODO implement me
-	panic("implement me")
+func (n NameNodeHandler) Mkdir(ctx context.Context, remote_file_path string) (_err error) {
+	err := n.core.MetaTrie.MkdirAll(remote_file_path)
+	return err
 }
 
 func (n NameNodeHandler) Rename(ctx context.Context, rename_src_path string, rename_dest_path string) (_r *tdfs.Response, _err error) {

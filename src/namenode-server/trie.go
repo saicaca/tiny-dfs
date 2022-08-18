@@ -14,7 +14,7 @@ import (
 type PathTrie struct {
 	root       *INode
 	filesByDN  map[string][]string
-	minReplica uint32
+	minReplica int32
 }
 
 // NewPathTrie 创建新的 PathTrie
@@ -31,7 +31,7 @@ type INode struct {
 	IsDir    bool              // true 表示本节点为目录，false 则为文件
 	Children map[string]*INode // 本目录下的文件和子目录 INode 列表
 	Meta     tdfs.Metadata     // 文件元数据
-	Replica  uint32            // 本文件当前副本数
+	Replica  int32             // 本文件当前副本数
 	DNList   set               // 存有本文件的 DataNode 的 IP 集合
 }
 
@@ -204,6 +204,31 @@ func (t *PathTrie) List(path string) {
 			fmt.Printf("%s\t\tFILE\n", path+name)
 		}
 	}
+}
+
+// 返回指定目录下的所有文件和子目录的信息
+func (t *PathTrie) ListStat(path string) (map[string]*tdfs.FileStat, error) {
+	path = beautifyPath(path)
+
+	target, err := t.FindDir(path)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	res := make(map[string]*tdfs.FileStat)
+	for name, node := range target.Children {
+		if node.IsDir {
+			res[path+name] = &tdfs.FileStat{IsDir: true}
+		} else if !node.Meta.IsDeleted && node.Replica > 0 {
+			res[path+name] = &tdfs.FileStat{
+				IsDir:    false,
+				Medatada: &node.Meta,
+				Replica:  node.Replica,
+			}
+		}
+	}
+	return res, nil
 }
 
 func (t *PathTrie) WalkAllFiles(action func(path string, fileNode *INode)) {

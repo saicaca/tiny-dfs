@@ -57,12 +57,20 @@ func (n NameNodeHandler) UpdateMetadata(ctx context.Context, file_path string, m
 	return err
 }
 
-func (n NameNodeHandler) Stat(ctx context.Context, remote_file_path string) (_r *tdfs.Metadata, _err error) {
+func (n NameNodeHandler) Stat(ctx context.Context, remote_file_path string) (_r *tdfs.FileStat, _err error) {
 	node := n.core.MetaTrie.GetFileNode(remote_file_path)
 	if node == nil {
 		return nil, errors.New("文件 " + remote_file_path + "不存在")
 	}
-	return &node.Meta, nil
+	return &tdfs.FileStat{IsDir: false, Medatada: &node.Meta, Replica: node.Replica}, nil
+}
+
+func (n NameNodeHandler) List(ctx context.Context, remote_dir_path string) (_r map[string]*tdfs.FileStat, _err error) {
+	res, err := n.core.MetaTrie.ListStat(remote_dir_path)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 func (n NameNodeHandler) Put(ctx context.Context, path string, metadata *tdfs.Metadata, client_ip string) (_r *tdfs.Response, _err error) {
@@ -91,9 +99,4 @@ func (n NameNodeHandler) Mkdir(ctx context.Context, remote_file_path string) (_e
 func (n NameNodeHandler) Rename(ctx context.Context, rename_src_path string, rename_dest_path string) (_err error) {
 	err := n.core.Move(rename_src_path, rename_dest_path)
 	return err
-}
-
-func (n NameNodeHandler) List(ctx context.Context, remote_dir_path string) (_r *tdfs.Response, _err error) {
-	//TODO implement me
-	panic("implement me")
 }

@@ -34,7 +34,7 @@ service NameNode {
         1:required string remote_file_path;
     )
 
-    shared.Metadata Stat (
+    shared.FileStat Stat (
         1:required string remote_file_path;
     )
 
@@ -47,7 +47,7 @@ service NameNode {
         2:required string rename_dest_path;
     )
 
-    shared.Response List(
+    map<string, shared.FileStat> List(
         1:required string remote_dir_path;
     )
 }

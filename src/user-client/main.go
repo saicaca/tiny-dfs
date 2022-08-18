@@ -119,23 +119,24 @@ func main() {
 				Name:    "list",
 				Aliases: []string{"ls"},
 				Usage:   "List files and sub directories of given directory",
-				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:    "recursive",
-						Aliases: []string{"r"},
-						Usage:   "Recursive",
-					},
+				Flags:   []cli.Flag{
+					//&cli.BoolFlag{
+					//	Name:    "recursive",
+					//	Aliases: []string{"r"},
+					//	Usage:   "Recursive",
+					//},
 				},
 				Action: func(c *cli.Context) error {
 					if c.NArg() != 1 {
 						return errors.New("参数数量错误")
 					}
 					path := c.Args().Get(0)
-					if c.Bool("r") {
-						fmt.Printf("List every thing recursively in %s\n", path)
-					} else {
-						fmt.Printf("List every thing in %s\n", path)
-					}
+					//if c.Bool("r") {
+					//	fmt.Printf("List every thing recursively in %s\n", path)
+					//} else {
+					//	fmt.Printf("List every thing in %s\n", path)
+					//}
+					list(path)
 					return nil
 				},
 			},
@@ -254,17 +255,46 @@ func move(oldPath string, newPath string) {
 
 func stat(path string) {
 	nnClient := getNameNodeClient()
-	meta, err := nnClient.Stat(context.Background(), path)
+	stat, err := nnClient.Stat(context.Background(), path)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"文件名称", "修改时间", "文件大小"})
-	t.AppendRows([]table.Row{
-		{meta.Name, time.UnixMilli(meta.Mtime).String(), util.FormatSize(meta.Size)},
+	t.AppendHeader(table.Row{"文件名称", "修改时间", "文件大小", "副本数量"})
+	t.AppendRow(table.Row{
+		stat.Medatada.Name, time.UnixMilli(stat.Medatada.Mtime).String(), util.FormatSize(stat.Medatada.Size), stat.Replica,
 	})
+	t.Render()
+}
+
+func list(path string) {
+	nnClient := getNameNodeClient()
+	stats, err := nnClient.List(context.Background(), path)
+	if err != nil {
+		fmt.Println("获取目录信息失败：", err)
+	}
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"名称", "类型", "修改时间", "文件大小", "副本数量"})
+	for p, stat := range stats {
+		if stat.IsDir {
+			t.AppendRow(table.Row{p, "目录", "", "", ""})
+		}
+	}
+	t.AppendSeparator()
+	for p, stat := range stats {
+		if !stat.IsDir {
+			t.AppendRow(table.Row{
+				p,
+				"文件",
+				time.UnixMilli(stat.Medatada.Mtime).String(),
+				util.FormatSize(stat.Medatada.Size),
+				stat.Replica,
+			})
+		}
+	}
 	t.Render()
 }
 

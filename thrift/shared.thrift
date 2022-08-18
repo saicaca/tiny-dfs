@@ -24,3 +24,9 @@ struct DNStat {
     3: i64 totalSpace;
     4: i64 traffic;
 }
+
+struct FileStat {
+    1: bool isDir
+    2: Metadata medatada;
+    3: i32 replica;
+}

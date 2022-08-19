@@ -71,7 +71,7 @@ datanode -nnaddr "localhost:19100" -port 19200 -root "./storage/" -space "1GB"
 tdfs put <local_file_path> <remote_file_path>
 ```
 
-#### `put`
+#### `get`
 
 别名：`g`
 
@@ -81,7 +81,7 @@ tdfs get <remote_file_path> <local_file_path>
 
 #### `move`
 
-别名：`mv`
+别名：`mv`, `rename`
 
 从服务器重命名或移动一个文件
 
@@ -100,6 +100,8 @@ tdfs delete <file_path>
 ```
 
 #### `stat`
+
+别名：`s`
 
 显示服务器上指定文件的信息
 
@@ -125,12 +127,20 @@ tdfs list <dir_path>
 tdfs mkdir <dir_path>
 ```
 
-#### `--help`
+#### `datanodes`
 
-别名：`-h`，或不输入任何指令
+别名：`dn`
+
+显示当前已连接的所有 DataNode 的信息
+
+```bash
+tdfs datanodes
+```
+
+#### `help`
 
 显示帮助
 
 ```bash
-tdfs -h
+tdfs help
 ```

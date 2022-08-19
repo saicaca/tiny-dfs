@@ -100,9 +100,9 @@ func main() {
 				},
 			},
 			{
-				Name:    "rename",
-				Aliases: []string{"mv"},
-				Usage:   "Rename a file on DFS",
+				Name:    "move",
+				Aliases: []string{"mv", "rename"},
+				Usage:   "Move a file on DFS",
 				Flags:   []cli.Flag{},
 				Action: func(c *cli.Context) error {
 					if c.NArg() != 2 {
@@ -337,7 +337,7 @@ func listDataNodes() {
 			stat.FileNum,
 			util.FormatSize(stat.UsedSpace),
 			util.FormatSize(stat.TotalSpace),
-			fmt.Sprintf("%.2f %%", float64(stat.UsedSpace)/float64(stat.TotalSpace)),
+			fmt.Sprintf("%.2f %%", float64(stat.UsedSpace)/float64(stat.TotalSpace)*100.0),
 			util.FormatSize(stat.Traffic),
 		})
 		i++

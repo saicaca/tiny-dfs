@@ -19,7 +19,7 @@ func NewNameNodeHandler(core *NameNodeCore) *NameNodeHandler {
 }
 
 func (n NameNodeHandler) Register(ctx context.Context, meta_map map[string]*tdfs.Metadata, client_ip string) (_r *tdfs.Response, _err error) {
-	fmt.Println("获取到客户端 IP", client_ip)
+	fmt.Println("已连接 DataNode", client_ip)
 	n.core.PutFile(meta_map, client_ip)
 
 	go n.core.Registry.PutDataNode(client_ip)
@@ -80,11 +80,6 @@ func (n NameNodeHandler) ListDataNode(ctx context.Context) (_r map[string]*tdfs.
 func (n NameNodeHandler) Put(ctx context.Context, path string, metadata *tdfs.Metadata, client_ip string) (_r *tdfs.Response, _err error) {
 	n.core.PutSingleFile(path, metadata, client_ip)
 	return &tdfs.Response{Status: 200, Msg: "Put success"}, nil
-}
-
-func (n NameNodeHandler) Get(ctx context.Context, remote_file_path string, local_file_path string) (_r *tdfs.Response, _err error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (n NameNodeHandler) Delete(ctx context.Context, remote_file_path string) (_err error) {

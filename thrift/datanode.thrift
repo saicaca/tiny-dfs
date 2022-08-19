@@ -5,8 +5,6 @@ namespace go tdfs
 service DataNode {
     shared.DNStat Ping ()
 
-    shared.Response Heartbeat ()
-
     shared.Response Put (
         1:required string remote_file_path;
         2:required binary file_data;

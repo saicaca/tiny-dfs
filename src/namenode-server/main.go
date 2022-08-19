@@ -13,7 +13,8 @@ import (
 func main() {
 	// 获取运行参数 {addr}
 	addr := flag.String("addr", "localhost:19100", "Address to listen to")
-	limit := flag.Int("limit", 2, "使 NameNode 可结束安全模式的最小连接 DataNode 数量，同时也是存储文件的最小副本数量")
+	limit := flag.Int("limit", 2, "The minimum number of replica")
+	timeout := flag.Int64("interval", 30, "The interval between two heartbeats")
 	flag.Usage = Usage
 	flag.Parse()
 
@@ -28,7 +29,7 @@ func main() {
 		log.Fatalln("run server error:", err)
 	}
 
-	core := NewNameNodeCore(time.Minute*5, *limit)
+	core := NewNameNodeCore(time.Duration(*timeout)*time.Second, *limit)
 	handler := NewNameNodeHandler(core)
 	processor := tdfs.NewNameNodeProcessor(handler)
 	server := thrift.NewTSimpleServer4(processor, transport, transportFactory, protocolFactory)

@@ -25,11 +25,6 @@ service NameNode {
         3:required string client_ip;
     )
 
-    shared.Response Get (
-        1:required string remote_file_path;
-        2:required string local_file_path;
-    )
-
     void Delete (
         1:required string remote_file_path;
     )

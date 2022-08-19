@@ -1,23 +1,31 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/apache/thrift/lib/go/thrift"
 	"log"
 	"os"
 	"tiny-dfs/gen-go/tdfs"
+	"tiny-dfs/src/util"
 )
 
 func main() {
 	// 获取运行参数 {addr}
 	port := flag.String("port", "19200", "Port to listen to")
-	root := flag.String("root", "./playground/dn1/", "Directories to store data")
+	root := flag.String("root", "./dn/", "Directories to store data")
+	space := flag.String("space", "1GB", "Reserved space to store data")
+	nnaddr := flag.String("nnaddr", "localhost:19100", "NameNode address")
 	flag.Usage = Usage
 	flag.Parse()
 
 	addr := "localhost:" + *port
-	nnaddr := "localhost:19100"
+
+	spaceInByte := util.SizeToByte(*space)
+	if spaceInByte < 0 {
+		panic(errors.New("space 参数格式错误"))
+	}
 
 	var protocolFactory thrift.TProtocolFactory
 	protocolFactory = thrift.NewTBinaryProtocolFactoryConf(nil)
@@ -32,11 +40,11 @@ func main() {
 
 	// DataNode 启动配置
 	config := &DNConfig{
-		NNAddr:     nnaddr,
+		NNAddr:     *nnaddr,
 		isTest:     false,
 		root:       *root,
 		localIP:    transport.Addr().String(),
-		totalSpace: 10 * 1024 * 1024 * 1024,
+		totalSpace: spaceInByte,
 	}
 
 	fmt.Println("启动配置", *config)

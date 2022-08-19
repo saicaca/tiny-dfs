@@ -108,6 +108,7 @@ func (core *DataNodeCore) Save(path string, data []byte, meta *tdfs.Metadata) er
 	// 更新统计数据
 	core.fileNum++
 	core.traffic += int64(len(data))
+	core.usedSpace += int64(len(data))
 
 	return nil
 }

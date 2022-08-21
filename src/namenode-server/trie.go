@@ -135,11 +135,15 @@ func (t *PathTrie) PutFile(path string, DNAddr string, meta *tdfs.Metadata) (*sh
 		result.Data["status"] = PUT_SUCCESS
 		dirNode.Children[fileName].Replica += 1
 		dirNode.Children[fileName].DNList[DNAddr] = void
-		log.Println("新增文件副本", path, "，来自 DataNode 节点", DNAddr)
+		if !meta.IsDeleted {
+			log.Println("新增文件副本", path, "，来自 DataNode 节点", DNAddr)
+		}
 	} else { // 当前 PUT 的文件版本低于最新版本
 		result.Data["status"] = PUT_OUTDATED
 		result.Data["source"] = dirNode.Children[fileName].DNList
-		log.Println("来自 DataNode 节点", DNAddr, "的文件", path, "版本低于现有，将自动更新")
+		if meta.IsDeleted {
+			log.Println("来自 DataNode 节点", DNAddr, "的文件", path, "版本低于现有，将自动更新")
+		}
 	}
 
 	// 写入 DN地址 -> 文件 map
@@ -162,7 +166,7 @@ func (t *PathTrie) GetFileNode(path string) *INode {
 func (t *PathTrie) RemoveByDN(DNAddr string) (*shared.Result, error) {
 	fileList := t.filesByDN[DNAddr]
 
-	fmt.Println("待删除文件：", fileList)
+	log.Println(DNAddr, "存储的文件副本：", fileList)
 
 	var filesToCopy []string
 
@@ -173,8 +177,8 @@ func (t *PathTrie) RemoveByDN(DNAddr string) (*shared.Result, error) {
 			return nil, err
 		}
 
-		dirNode.Children[fileName].Replica -= 1 // 减少副本数量
-		delete(dirNode.DNList, DNAddr)          // 从文件的副本 DataNode 列表中移除当前 DataNode
+		dirNode.Children[fileName].Replica -= 1           // 减少副本数量
+		delete(dirNode.Children[fileName].DNList, DNAddr) // 从文件的副本 DataNode 列表中移除当前 DataNode
 		if dirNode.Children[fileName].Replica < t.minReplica {
 			filesToCopy = append(filesToCopy, filePath)
 		}

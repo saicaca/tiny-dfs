@@ -22,13 +22,19 @@ func main() {
 
 	addr := "localhost:" + *port
 
+	cfg := &thrift.TConfiguration{
+		ConnectTimeout: 0,
+		SocketTimeout:  0,
+		MaxMessageSize: 1024 * 1024 * 1024,
+	}
+
 	spaceInByte := util.SizeToByte(*space)
 	if spaceInByte < 0 {
 		panic(errors.New("space 参数格式错误"))
 	}
 
 	var protocolFactory thrift.TProtocolFactory
-	protocolFactory = thrift.NewTBinaryProtocolFactoryConf(nil)
+	protocolFactory = thrift.NewTBinaryProtocolFactoryConf(cfg)
 
 	var transportFactory thrift.TTransportFactory
 	transportFactory = thrift.NewTBufferedTransportFactory(8192)
@@ -47,7 +53,11 @@ func main() {
 		totalSpace: spaceInByte,
 	}
 
-	fmt.Println("启动配置", *config)
+	//fmt.Println("启动配置", *config)
+	fmt.Println("NameNode 地址：", *nnaddr)
+	fmt.Println("启动端口：", *port)
+	fmt.Println("存储目录：", *root)
+	fmt.Println("分配空间：", util.FormatSize(spaceInByte))
 
 	core, err := NewDataNodeCore(config)
 	if err != nil {

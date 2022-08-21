@@ -19,7 +19,11 @@ import (
 
 var defaultCtx = context.Background()
 
+var nameNodeAddr string
+
 func main() {
+	getNameNodeAddr()
+
 	app := &cli.App{
 		Commands: []*cli.Command{
 			{
@@ -189,13 +193,21 @@ func putFile(localPath string, remotePath string) {
 	}
 
 	for _, DNAddr := range nodes {
-		client, err := dnc.NewDataNodeClient(DNAddr)
+		//client, err := dnc.NewDataNodeClient(DNAddr)
+		fmt.Println("正在上传", localPath, "到 DataNode", DNAddr, remotePath)
+
 		if err != nil {
 			log.Println("Failed to connect DataNode", DNAddr)
 			continue
 		}
 
-		_, err = client.Put(defaultCtx, remotePath, data, meta)
+		//_, err = client.Put(defaultCtx, remotePath, data, meta)
+		dnc.RequestDataNode(DNAddr, func(client *tdfs.DataNodeClient) {
+			_, err := client.Put(context.Background(), remotePath, data, meta)
+			if err != nil {
+				panic(err)
+			}
+		})
 		if err != nil {
 			log.Println("Put file error:", err)
 			continue
@@ -226,19 +238,20 @@ func getFile(remotePath string, localPath string) {
 	// 尝试下载文件
 	var resp *tdfs.Response
 	for _, DNAddr := range nodes {
-		client, err := dnc.NewDataNodeClient(DNAddr)
+		log.Println("正在从", DNAddr, "下载文件")
+		dnc.RequestDataNode(DNAddr, func(client *tdfs.DataNodeClient) {
+			time.Sleep(5 * time.Second)
+			resp, err = client.Get(context.Background(), remotePath)
+		})
 		if err != nil {
-			log.Println("Failed to connect DataNode", DNAddr)
-		}
-		//log.Println("Connected to DataNode", DNAddr)
-
-		resp, err = client.Get(defaultCtx, remotePath)
-		if err != nil {
-			log.Panicln("Failed to get file:", err)
+			fmt.Println("从", DNAddr, "下载", remotePath, "失败：", err)
 		} else {
 			fmt.Println("从 DataNodes", DNAddr, "下载", remotePath, "到", localPath)
 			break
 		}
+	}
+	if err != nil {
+		panic("下载文件" + remotePath + "失败" + err.Error())
 	}
 
 	err = os.WriteFile(localPath, resp.File.Data, 0777)
@@ -248,24 +261,41 @@ func getFile(remotePath string, localPath string) {
 }
 
 func deleteFile(remotePath string) {
-	nnClient := getNameNodeClient()
-	err := nnClient.Delete(context.Background(), remotePath)
+	var err error
+	nnc.RequestNameNode(nameNodeAddr, func(client *tdfs.NameNodeClient) error {
+		err = client.Delete(context.Background(), remotePath)
+		return nil
+	})
+
 	if err != nil {
 		fmt.Println("删除文件失败：", err)
+	} else {
+		fmt.Println("成功删除文件", remotePath)
 	}
 }
 
 func move(oldPath string, newPath string) {
-	nnClient := getNameNodeClient()
-	err := nnClient.Rename(context.Background(), oldPath, newPath)
+	var err error
+	nnc.RequestNameNode(nameNodeAddr, func(client *tdfs.NameNodeClient) error {
+		err = client.Rename(context.Background(), oldPath, newPath)
+		return nil
+	})
+
 	if err != nil {
 		fmt.Println("移动/重命名文件失败：", err)
+	} else {
+		fmt.Println("成功将", oldPath, "移动到 / 重命名为", newPath)
 	}
 }
 
 func stat(path string) {
-	nnClient := getNameNodeClient()
-	stat, err := nnClient.Stat(context.Background(), path)
+	var stat *tdfs.FileStat
+	var err error
+	nnc.RequestNameNode(nameNodeAddr, func(client *tdfs.NameNodeClient) error {
+		stat, err = client.Stat(context.Background(), path)
+		return nil
+	})
+
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -280,8 +310,13 @@ func stat(path string) {
 }
 
 func list(path string) {
-	nnClient := getNameNodeClient()
-	stats, err := nnClient.List(context.Background(), path)
+	var stats map[string]*tdfs.FileStat
+	var err error
+
+	nnc.RequestNameNode(nameNodeAddr, func(client *tdfs.NameNodeClient) error {
+		stats, err = client.List(context.Background(), path)
+		return nil
+	})
 	if err != nil {
 		fmt.Println("获取目录信息失败：", err)
 	}
@@ -290,7 +325,7 @@ func list(path string) {
 	t.AppendHeader(table.Row{"名称", "类型", "修改时间", "文件大小", "副本数量"})
 	for p, stat := range stats {
 		if stat.IsDir {
-			t.AppendRow(table.Row{p, "目录", "", "", ""})
+			t.AppendRow(table.Row{p, "目录", "--", "--", "--"})
 		}
 	}
 	t.AppendSeparator()
@@ -319,8 +354,19 @@ func mkdirAll(path string) {
 }
 
 func listDataNodes() {
-	nnClient := getNameNodeClient()
-	mp, err := nnClient.ListDataNode(context.Background())
+	//nnClient := getNameNodeClient()
+	//mp, err := nnClient.ListDataNode(context.Background())
+	var mp map[string]*tdfs.DNStat
+	var err error
+
+	nnc.RequestNameNode(nameNodeAddr, func(client *tdfs.NameNodeClient) error {
+		mp, err = client.ListDataNode(context.Background())
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
 	if err != nil {
 		fmt.Println("获取 DataNodes 信息失败：", err)
 		return
@@ -343,6 +389,23 @@ func listDataNodes() {
 		i++
 	}
 	t.Render()
+}
+
+func getNameNodeAddr() {
+	yfile, err := os.ReadFile("config.yml")
+	if err != nil {
+		fmt.Println("未找到配置文件 config.yml")
+	}
+	data := make(map[interface{}]interface{})
+	err2 := yaml.Unmarshal(yfile, &data)
+	if err2 != nil {
+		fmt.Println("解析配置文件失败", err2)
+	}
+
+	for _, addr := range data["namenode"].([]interface{}) {
+		nameNodeAddr = addr.(string)
+		break
+	}
 }
 
 func getNameNodeClient() *tdfs.NameNodeClient {

@@ -28,6 +28,9 @@ func NewNameNodeCore(timeout time.Duration, safeLimit int) *NameNodeCore {
 			core.ExitSafeMode()
 		}
 	}
+	registry.deleteAction = func(addr string) {
+		core.RemoveFromTrie(addr)
+	}
 	registry.minReplica = safeLimit
 	core.Registry = registry
 	core.MetaTrie = NewPathTrie()
@@ -163,7 +166,7 @@ func (core *NameNodeCore) MakeReplica(path string) {
 		if sourceNode == target {
 			continue
 		}
-		log.Println("从", sourceNode, "复制文件", path, "到", target)
+		log.Println("从", sourceNode, "为文件", path, "创建副本到", target)
 		_, err := sourceClient.MakeReplica(context.Background(), target, path)
 		if err != nil {
 			log.Println("从", sourceNode, "复制文件", path, "到", target, "失败", err)
@@ -172,13 +175,15 @@ func (core *NameNodeCore) MakeReplica(path string) {
 }
 
 func (core *NameNodeCore) RemoveFromTrie(DNAddr string) {
-	dn, err := core.MetaTrie.RemoveByDN(DNAddr)
+	res, err := core.MetaTrie.RemoveByDN(DNAddr)
 	if err != nil {
 		log.Println("从文件树中移除 DataNode 文件发生错误：", err)
 	}
-
-	// TODO 补充文件副本
-	fmt.Println(dn)
+	// 补充文件副本
+	files := (res.Data["underLimit"]).([]string)
+	for _, path := range files {
+		core.MakeReplica(path)
+	}
 }
 
 func (core *NameNodeCore) RemoveReplicaFromDataNode(addr string, path string) {

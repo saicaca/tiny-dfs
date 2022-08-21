@@ -93,16 +93,16 @@ func (r *Registry) AliveDataNodes(deleteAction func(addr string)) []string {
 
 // StartHeartBeat 启动心跳检测
 func (r *Registry) StartHeartBeat() {
-	log.Println("心跳检测启动")
+	//log.Println("心跳检测启动")
 
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Second * 3)
 	go func() {
 		for range ticker.C { // 进行一次循环
 			for _, item := range r.dnmap { // 遍历节点
 				client, err := dnc.NewDataNodeClient(item.Addr)
 				if err != nil { // 连接 DataNode 失败
 					log.Println("DataNode", item.Addr, "无法连接")
-					if item.start.Add(time.Second * 20).Before(time.Now()) {
+					if item.start.Add(time.Second * 10).Before(time.Now()) {
 						log.Println("DataNode", item.Addr, "长时间无法连接，移除节点")
 						delete(r.dnmap, item.Addr)
 						r.dnCount--

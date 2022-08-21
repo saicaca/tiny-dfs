@@ -221,8 +221,6 @@ func (core *DataNodeCore) Scan() (*MetaMap, error) {
 
 	mp := make(MetaMap)
 
-	fmt.Println(core.root + META_PATH)
-
 	err := filepath.Walk(core.root+META_PATH, func(path string, info fs.FileInfo, err error) error {
 
 		// 如果读到的是目录，不做任何操作

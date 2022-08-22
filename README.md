@@ -88,6 +88,8 @@ tdfs put <local_file_path> <remote_file_path>
 
 别名：`g`
 
+从服务器下载一个文件到本地
+
 ```bash
 tdfs get <remote_file_path> <local_file_path>
 ```

@@ -61,7 +61,20 @@ datanode -nnaddr "localhost:19100" -port 19200 -root "./storage/" -space "1GB"
 
 ### 用户客户端
 
-#### `put`
+#### 创建配置文件
+
+在 `tdfs` 客户端文件的同目录下创建 `config.yml` 文件，填入 NameNode 地址列表（因当前仅支持单 NameNode 所以只填入一个即可）
+
+```yaml
+namenode:
+  - <host>:<port>
+  - <host>:<port>
+  - <host>:<port>
+```
+
+#### 指令
+
+##### `put`
 
 别名：`p`
 
@@ -71,7 +84,7 @@ datanode -nnaddr "localhost:19100" -port 19200 -root "./storage/" -space "1GB"
 tdfs put <local_file_path> <remote_file_path>
 ```
 
-#### `get`
+##### `get`
 
 别名：`g`
 
@@ -79,7 +92,7 @@ tdfs put <local_file_path> <remote_file_path>
 tdfs get <remote_file_path> <local_file_path>
 ```
 
-#### `move`
+##### `move`
 
 别名：`mv`, `rename`
 
@@ -89,7 +102,7 @@ tdfs get <remote_file_path> <local_file_path>
 tdfs move <old_file_path> <new_file_path>
 ```
 
-#### `delete`
+##### `delete`
 
 别名：`rm`
 
@@ -99,7 +112,7 @@ tdfs move <old_file_path> <new_file_path>
 tdfs delete <file_path>
 ```
 
-#### `stat`
+##### `stat`
 
 别名：`s`
 
@@ -109,7 +122,7 @@ tdfs delete <file_path>
 tdfs stat <file_path>
 ```
 
-#### `list`
+##### `list`
 
 别名：`ls`
 
@@ -119,7 +132,7 @@ tdfs stat <file_path>
 tdfs list <dir_path>
 ```
 
-#### `mkdir`
+##### `mkdir`
 
 检查服务器上指定的目录是否可用
 
@@ -127,7 +140,7 @@ tdfs list <dir_path>
 tdfs mkdir <dir_path>
 ```
 
-#### `datanodes`
+##### `datanodes`
 
 别名：`dn`
 
@@ -137,7 +150,7 @@ tdfs mkdir <dir_path>
 tdfs datanodes
 ```
 
-#### `help`
+##### `help`
 
 显示帮助
 

@@ -240,7 +240,6 @@ func getFile(remotePath string, localPath string) {
 	for _, DNAddr := range nodes {
 		log.Println("正在从", DNAddr, "下载文件")
 		dnc.RequestDataNode(DNAddr, func(client *tdfs.DataNodeClient) {
-			time.Sleep(5 * time.Second)
 			resp, err = client.Get(context.Background(), remotePath)
 		})
 		if err != nil {

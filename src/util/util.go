@@ -66,3 +66,7 @@ func SizeToByte(str string) int64 {
 	}
 	return int64(num)
 }
+
+func FormatAddress(addr string) string {
+	return strings.ReplaceAll(addr, "localhost", "127.0.0.1")
+}

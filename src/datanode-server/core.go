@@ -12,6 +12,7 @@ import (
 	"tiny-dfs/gen-go/tdfs"
 	dnc "tiny-dfs/src/datanode-client"
 	nnc "tiny-dfs/src/namenode-client"
+	"tiny-dfs/src/util"
 )
 
 type DataNodeCore struct {
@@ -301,5 +302,30 @@ func (core *DataNodeCore) writeMetadata(path string, meta *tdfs.Metadata) error 
 		log.Println("write metadata failed:", err)
 		return err
 	}
+	return nil
+}
+
+func (core *DataNodeCore) PutChunk(data []byte, md5 string) error {
+	if util.Md5Str(data) != md5 {
+		return errors.New("md5 check failed, chunk may be corrupted: " + md5)
+	}
+
+	_ = os.MkdirAll(core.root+md5[0:1]+"/"+md5[0:2]+"/", 0755)
+
+	pathToSave := core.root + "/" + md5[0:1] + "/" + md5[0:2] + "/" + md5
+	if _, err := os.Stat(pathToSave); err == nil {
+		_ = os.Remove(pathToSave)
+	}
+
+	f, err := os.OpenFile(pathToSave, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+
+	_, err = f.Write(data)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

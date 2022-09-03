@@ -66,3 +66,8 @@ func (d *DataNodeHandler) Delete(ctx context.Context, remote_file_path string) (
 	d.core.Delete(remote_file_path)
 	return &tdfs.Response{Status: 200}, nil
 }
+
+func (d *DataNodeHandler) PutChunk(ctx context.Context, data []byte, md5 string) (_err error) {
+	err := d.core.PutChunk(data, md5)
+	return err
+}

@@ -39,4 +39,9 @@ service DataNode {
         1:required string file_path;
         2:required shared.File file;
     )
+
+    void PutChunk (
+        1:required binary data;
+        2:required string md5;
+    )
 }

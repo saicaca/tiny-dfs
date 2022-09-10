@@ -23,6 +23,7 @@ type DataNodeCore struct {
 	totalSpace int64
 	usedSpace  int64
 	traffic    int64
+	NNAddr     string
 }
 
 type DNConfig struct {
@@ -43,6 +44,7 @@ func NewDataNodeCore(config *DNConfig) (*DataNodeCore, error) {
 	core.fileNum = 0
 	core.usedSpace = 0
 	core.traffic = 0
+	core.NNAddr = config.NNAddr
 
 	// 创建存储目录
 	if err := os.MkdirAll(core.root+META_PATH, os.ModePerm); err != nil {
@@ -305,14 +307,14 @@ func (core *DataNodeCore) writeMetadata(path string, meta *tdfs.Metadata) error 
 	return nil
 }
 
-func (core *DataNodeCore) PutChunk(data []byte, md5 string) error {
+func (core *DataNodeCore) SaveChunk(data []byte, md5 string) error {
 	if util.Md5Str(data) != md5 {
 		return errors.New("md5 check failed, chunk may be corrupted: " + md5)
 	}
 
 	_ = os.MkdirAll(core.root+md5[0:1]+"/"+md5[0:2]+"/", 0755)
 
-	pathToSave := core.root + "/" + md5[0:1] + "/" + md5[0:2] + "/" + md5
+	pathToSave := core.root + "/" + md5[0:1] + "/" + md5[0:2] + "/" + md5 // TODO path generating rules should be configurable
 	if _, err := os.Stat(pathToSave); err == nil {
 		_ = os.Remove(pathToSave)
 	}
@@ -328,4 +330,23 @@ func (core *DataNodeCore) PutChunk(data []byte, md5 string) error {
 	}
 
 	return nil
+}
+
+func (core *DataNodeCore) PutChunk(taskId string, offset int64, data []byte, md5 string) (*tdfs.PutChunkResp, error) {
+	err := core.SaveChunk(data, md5)
+	if err != nil {
+		return nil, err
+	}
+	var resp *tdfs.PutChunkResp
+	nnc.RequestNameNode(core.NNAddr, func(client *tdfs.NameNodeClient) error {
+		resp, err = client.PutChunk(context.Background(), taskId, offset, md5)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO send ACK to NameNode and get next DataNode to make replica
+
+	return resp, nil
 }

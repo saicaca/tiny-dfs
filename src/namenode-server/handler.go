@@ -19,7 +19,7 @@ func NewNameNodeHandler(core *NameNodeCore) *NameNodeHandler {
 
 func (n NameNodeHandler) Register(ctx context.Context, meta_map map[string]*tdfs.Metadata, client_ip string) (_r *tdfs.Response, _err error) {
 	log.Println("已连接 DataNode", client_ip)
-	n.core.PutFile(meta_map, client_ip)
+	n.core.PutFileLegacy(meta_map, client_ip)
 
 	go n.core.Registry.PutDataNode(client_ip)
 
@@ -97,4 +97,14 @@ func (n NameNodeHandler) Mkdir(ctx context.Context, remote_file_path string) (_e
 func (n NameNodeHandler) Rename(ctx context.Context, rename_src_path string, rename_dest_path string) (_err error) {
 	err := n.core.Move(rename_src_path, rename_dest_path)
 	return err
+}
+
+func (n NameNodeHandler) InitializePut(ctx context.Context, file_path string, metadata *tdfs.Metadata, total_block int64) (taskId string, _err error) {
+	taskId, _err = n.core.InitializePut(file_path, metadata, total_block)
+	return
+}
+
+func (n NameNodeHandler) PutChunk(ctx context.Context, task_id string, seq int64, chunk_id string) (_r *tdfs.PutChunkResp, _err error) {
+	_r, _err = n.core.PutChunk(task_id, seq, chunk_id)
+	return
 }

@@ -33,6 +33,7 @@ type INode struct {
 	Meta     tdfs.Metadata     // 文件元数据
 	Replica  int32             // 本文件当前副本数
 	DNList   set               // 存有本文件的 DataNode 的 IP 集合
+	chunks   []string          // List of chunks
 }
 
 type (
@@ -95,7 +96,7 @@ const (
 )
 
 // 保存文件
-func (t *PathTrie) PutFile(path string, DNAddr string, meta *tdfs.Metadata) (*shared.Result, error) {
+func (t *PathTrie) PutFileLegacy(path string, DNAddr string, meta *tdfs.Metadata) (*shared.Result, error) {
 	// 获取文件所在目录节点
 	dir, fileName := filepath.Split(path)
 	dirNode, err := t.getDir(dir, true)
@@ -150,6 +151,23 @@ func (t *PathTrie) PutFile(path string, DNAddr string, meta *tdfs.Metadata) (*sh
 	t.filesByDN[DNAddr] = append(t.filesByDN[DNAddr], path)
 
 	return result, nil
+}
+
+// PutFile
+func (t *PathTrie) PutFile(path string, meta *tdfs.Metadata, chunks []string) error {
+	dir, fileName := filepath.Split(path)
+	dirNode, err := t.getDir(dir, true)
+	if err != nil {
+		return err
+	}
+
+	dirNode.Children[fileName] = &INode{
+		IsDir:   false,
+		Meta:    *meta,
+		chunks:  chunks,
+		Replica: 1, // Temporary, for compatibility with older versions
+	}
+	return nil
 }
 
 func (t *PathTrie) GetFileNode(path string) *INode {

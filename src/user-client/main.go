@@ -164,7 +164,7 @@ func main() {
 	}
 }
 
-func putFile(localPath string, remotePath string) {
+func putFileDeprecated(localPath string, remotePath string) {
 	nnClient := getNameNodeClient()
 	nodes, err := nnClient.GetSpareNodes(context.Background())
 	if err != nil {
@@ -216,6 +216,72 @@ func putFile(localPath string, remotePath string) {
 			break
 		}
 	}
+}
+
+func putFile(localPath string, remotePath string) {
+	// get chunker
+	chunker, err := NewFileChunker(localPath)
+	if err != nil {
+		panic(err)
+	}
+
+	// create metadata
+	meta := &tdfs.Metadata{
+		Size: int64(chunker.fileSize),
+	}
+
+	// call namenode to create put task
+	var taskId string
+	nnc.RequestNameNode(nameNodeAddr, func(client *tdfs.NameNodeClient) error {
+		taskId, err = client.InitializePut(context.Background(), remotePath, meta, int64(chunker.total))
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// put chunks
+	const MAX_RETRY = 5
+	seq := 0
+	for chunker.HasNext() {
+		fmt.Printf("Putting chunk %v of %v\n", seq+1, chunker.total)
+		chunkData := chunker.GetNext()
+		md5 := util.Md5Str(chunkData)
+		failCount := 0
+		var dataNodes []string
+		for failCount < MAX_RETRY {
+			// get datanode addresses to put chunk
+			nnc.RequestNameNode(nameNodeAddr, func(client *tdfs.NameNodeClient) error {
+				dataNodes, err = client.GetSpareNodes(context.Background())
+				return nil
+			})
+			if err != nil {
+				fmt.Println("failed to get DataNodes")
+				failCount++
+				continue
+			}
+
+			// put chunk to datanode
+			_ = dnc.RequestDataNode(dataNodes[0], func(client *tdfs.DataNodeClient) {
+				_, err = client.PutChunk(context.Background(), taskId, int64(seq), chunkData, md5)
+			})
+			if err != nil {
+				fmt.Println("failed to put chunk to DataNode " + dataNodes[0])
+				failCount++
+				continue
+			} else {
+				break
+			}
+		}
+
+		if failCount == MAX_RETRY { // failed to put chunk
+			panic(errors.New(fmt.Sprintf("failed to put chunk %v", seq)))
+		} else { // succeeded to put chunk
+			seq++
+		}
+	}
+
+	fmt.Println("Succeed to put file", localPath, "to", remotePath)
 }
 
 func getFile(remotePath string, localPath string) {

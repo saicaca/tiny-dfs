@@ -40,8 +40,10 @@ service DataNode {
         2:required shared.File file;
     )
 
-    void PutChunk (
-        1:required binary data;
-        2:required string md5;
+    shared.PutChunkResp PutChunk (
+        1:required string task_id;
+        2:required i64 offset;
+        3:required binary data;
+        4:required string md5;
     )
 }

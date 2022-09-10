@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"log"
 	"path/filepath"
+	"strconv"
+	"sync"
 	"time"
 	"tiny-dfs/gen-go/tdfs"
 	dnc "tiny-dfs/src/datanode-client"
@@ -14,6 +17,7 @@ import (
 type NameNodeCore struct {
 	MetaTrie      *PathTrie
 	Registry      *Registry
+	putMap        map[string]*PutTask
 	isSafeMode    bool // 是否处于安全模式
 	exitSafeLimit int  // 退出安全模式所需的最小 DN 数量
 }
@@ -36,17 +40,18 @@ func NewNameNodeCore(timeout time.Duration, safeLimit int) *NameNodeCore {
 	core.MetaTrie = NewPathTrie()
 	core.isSafeMode = true
 	core.exitSafeLimit = safeLimit
+	core.putMap = make(map[string]*PutTask)
 	return core
 }
 
-func (core *NameNodeCore) PutFile(metaMap map[string]*tdfs.Metadata, DNAddr string) {
+func (core *NameNodeCore) PutFileLegacy(metaMap map[string]*tdfs.Metadata, DNAddr string) {
 	for path, meta := range metaMap {
 		core.PutSingleFile(path, meta, DNAddr)
 	}
 }
 
 func (core *NameNodeCore) PutSingleFile(path string, meta *tdfs.Metadata, DNAddr string) {
-	res, err := core.MetaTrie.PutFile(path, DNAddr, meta)
+	res, err := core.MetaTrie.PutFileLegacy(path, DNAddr, meta)
 	if err != nil {
 		log.Println("Put file", path, "failed:", err)
 	}
@@ -208,4 +213,48 @@ func (core *NameNodeCore) ExitSafeMode() {
 			core.MakeReplica(path)
 		}
 	})
+}
+
+type PutTask struct {
+	path     string
+	total    int64
+	finished int64
+	chunkIds []string
+	meta     *tdfs.Metadata
+	mu       sync.Mutex
+}
+
+func (core *NameNodeCore) InitializePut(path string, meta *tdfs.Metadata, totalChunk int64) (string, error) {
+	task := &PutTask{}
+	taskId := uuid.NewString()
+	task.path = path
+	task.total = totalChunk
+	task.finished = 0
+	task.chunkIds = make([]string, totalChunk)
+	task.meta = meta
+
+	core.putMap[taskId] = task
+
+	return taskId, nil
+}
+
+func (core *NameNodeCore) PutChunk(taskId string, seq int64, chunkId string) (*tdfs.PutChunkResp, error) {
+	task := core.putMap[taskId]
+	if task.chunkIds[seq] == "" {
+		task.mu.Lock()
+		defer task.mu.Unlock()
+		task.chunkIds[seq] = chunkId
+		task.finished++
+		if task.finished == task.total {
+			_ = core.MetaTrie.PutFile(task.path, task.meta, task.chunkIds)
+			log.Println("Put file", task.path, "with", task.total, "chunks")
+			return &tdfs.PutChunkResp{IsFinished: true}, nil
+		} else {
+			return &tdfs.PutChunkResp{IsFinished: false}, nil
+		}
+	} else if task.chunkIds[seq] == chunkId { // chunk already exists
+		return &tdfs.PutChunkResp{IsFinished: task.finished == task.total}, nil
+	} else { // different chunks with same offset
+		return nil, errors.New("different chunks with same offset " + strconv.FormatInt(seq, 10))
+	}
 }

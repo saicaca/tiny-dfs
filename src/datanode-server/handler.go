@@ -67,7 +67,7 @@ func (d *DataNodeHandler) Delete(ctx context.Context, remote_file_path string) (
 	return &tdfs.Response{Status: 200}, nil
 }
 
-func (d *DataNodeHandler) PutChunk(ctx context.Context, data []byte, md5 string) (_err error) {
-	err := d.core.PutChunk(data, md5)
-	return err
+func (d *DataNodeHandler) PutChunk(ctx context.Context, task_id string, offset int64, data []byte, md5 string) (_r *tdfs.PutChunkResp, _err error) {
+	resp, err := d.core.PutChunk(task_id, offset, data, md5)
+	return resp, err
 }

@@ -47,4 +47,16 @@ service NameNode {
     map<string, shared.FileStat> List(
         1:required string remote_dir_path;
     )
+
+    string InitializePut (
+        1:required string file_path;
+        2:required shared.Metadata metadata;
+        3:required i64 total_block;
+    )
+
+    shared.PutChunkResp PutChunk (
+        1:required string task_id;
+        2:required i64 seq;
+        3:required string chunk_id;
+    )
 }

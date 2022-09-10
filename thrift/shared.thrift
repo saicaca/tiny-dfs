@@ -31,3 +31,7 @@ struct FileStat {
     2: Metadata medatada;
     3: i32 replica;
 }
+
+struct PutChunkResp {
+    1:bool isFinished;
+}

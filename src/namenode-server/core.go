@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
 	"log"
 	"path/filepath"
@@ -20,6 +21,7 @@ type NameNodeCore struct {
 	putMap        map[string]*PutTask
 	isSafeMode    bool // 是否处于安全模式
 	exitSafeLimit int  // 退出安全模式所需的最小 DN 数量
+	chunkMap      map[string]mapset.Set[string]
 }
 
 func NewNameNodeCore(timeout time.Duration, safeLimit int) *NameNodeCore {
@@ -41,6 +43,7 @@ func NewNameNodeCore(timeout time.Duration, safeLimit int) *NameNodeCore {
 	core.isSafeMode = true
 	core.exitSafeLimit = safeLimit
 	core.putMap = make(map[string]*PutTask)
+	core.chunkMap = make(map[string]mapset.Set[string])
 	return core
 }
 
@@ -58,7 +61,7 @@ func (core *NameNodeCore) PutSingleFile(path string, meta *tdfs.Metadata, DNAddr
 
 	// 若此次 PUT 创建或更新了文件，且已经退出安全模式，则删除所有旧的文件副本，并复制新的副本
 	if res.Data["status"] == PUT_UPDATED && !core.isSafeMode {
-		lst := res.Data["toDelete"].(set)
+		lst := res.Data["toDelete"].(CSet)
 		for addr, _ := range lst {
 			core.RemoveReplicaFromDataNode(addr, path)
 		}
@@ -105,7 +108,7 @@ func (core *NameNodeCore) Move(originPath string, newPath string) error {
 	dir.Children[newFileName] = &INode{
 		IsDir:    false,
 		Replica:  0,
-		DNList:   make(set),
+		DNList:   make(CSet),
 		Meta:     newMetadata,
 		Children: make(map[string]*INode),
 	}
@@ -133,7 +136,7 @@ func (core *NameNodeCore) UpdateMetadata(path string, metadata *tdfs.Metadata) e
 	node := core.MetaTrie.GetFileNode(path)
 	node.Meta = *metadata
 
-	successList := make(set)
+	successList := make(CSet)
 	for addr, _ := range node.DNList {
 		client, err := dnc.NewDataNodeClient(addr)
 		if err != nil {
@@ -256,5 +259,36 @@ func (core *NameNodeCore) PutChunk(taskId string, seq int64, chunkId string) (*t
 		return &tdfs.PutChunkResp{IsFinished: task.finished == task.total}, nil
 	} else { // different chunks with same offset
 		return nil, errors.New("different chunks with same offset " + strconv.FormatInt(seq, 10))
+	}
+}
+
+func (core *NameNodeCore) GetChunks(path string, offset int64, size int64) (*tdfs.ChunkList, error) {
+	node := core.MetaTrie.GetFileNode(path)
+	if node == nil {
+		return nil, errors.New("File " + path + " not found")
+	}
+	lst := node.chunks[offset : offset+size]
+	ret := &tdfs.ChunkList{
+		Offset: offset,
+		Chunks: make([]*tdfs.ChunkInfo, size),
+	}
+	for _, v := range lst {
+		info := &tdfs.ChunkInfo{
+			ChunkId: v,
+		}
+		// TODO get datanode list
+		ret.Chunks = append(ret.Chunks, info)
+	}
+
+	return ret, nil
+}
+
+func (core *NameNodeCore) ReceiveChunks(chunks []string, datanodeIP string) {
+	for _, chunk := range chunks {
+		if _, ok := core.chunkMap[chunk]; !ok {
+			core.chunkMap[chunk] = mapset.NewSet[string]()
+		}
+		core.chunkMap[chunk].Add(datanodeIP)
+		log.Println("Loaded chunk", chunk, "on datanode", datanodeIP)
 	}
 }

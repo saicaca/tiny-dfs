@@ -3,9 +3,14 @@ include "shared.thrift"
 namespace go tdfs
 
 service NameNode {
-    shared.Response Register (
+    shared.Response RegisterDeprecated (
         1:map<string,shared.Metadata> meta_map;
         2:string client_ip
+    )
+
+    void Register (
+        1:set<string> chunks;
+        2:string datanode_ip;
     )
 
     list<string> GetSpareNodes ()
@@ -58,5 +63,11 @@ service NameNode {
         1:required string task_id;
         2:required i64 seq;
         3:required string chunk_id;
+    )
+
+    shared.ChunkList GetChunkList (
+        1:required string path;
+        2:required i64 offset;
+        3:required i64 size;
     )
 }

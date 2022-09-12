@@ -16,7 +16,7 @@ func main() {
 	port := flag.String("port", "19200", "Port to listen to")
 	root := flag.String("root", "./dn/", "Directories to store data")
 	space := flag.String("space", "1GB", "Reserved space to store data")
-	nnaddr := flag.String("nnaddr", "localhost:19100", "NameNode address")
+	nnaddr := flag.String("nnaddr", "localhost:19101", "NameNode address")
 	flag.Usage = Usage
 	flag.Parse()
 

@@ -17,13 +17,25 @@ func NewNameNodeHandler(core *NameNodeCore) *NameNodeHandler {
 	}
 }
 
-func (n NameNodeHandler) Register(ctx context.Context, meta_map map[string]*tdfs.Metadata, client_ip string) (_r *tdfs.Response, _err error) {
+func (n NameNodeHandler) RegisterDeprecated(ctx context.Context, meta_map map[string]*tdfs.Metadata, client_ip string) (_r *tdfs.Response, _err error) {
 	log.Println("已连接 DataNode", client_ip)
+	//addr, ok := thrift.GetHeader(ctx, "addr")
+	//if !ok {
+	//	fmt.Println("failed to get addr from context")
+	//}
+	//log.Println("Get addr from context:", addr)
+	//log.Println("Get RHeader List:", thrift.GetReadHeaderList(ctx))
+	//log.Println("Get WHeader List:", thrift.GetWriteHeaderList(ctx))
 	n.core.PutFileLegacy(meta_map, client_ip)
 
 	go n.core.Registry.PutDataNode(client_ip)
 
 	return &tdfs.Response{Status: 200, Msg: "Register success"}, nil
+}
+
+func (n NameNodeHandler) Register(ctx context.Context, chunks []string, datanode_ip string) (_err error) {
+	n.core.ReceiveChunks(chunks, datanode_ip)
+	return
 }
 
 func (n NameNodeHandler) GetSpareNodes(ctx context.Context) (_r []string, _err error) {
@@ -107,4 +119,9 @@ func (n NameNodeHandler) InitializePut(ctx context.Context, file_path string, me
 func (n NameNodeHandler) PutChunk(ctx context.Context, task_id string, seq int64, chunk_id string) (_r *tdfs.PutChunkResp, _err error) {
 	_r, _err = n.core.PutChunk(task_id, seq, chunk_id)
 	return
+}
+
+func (n NameNodeHandler) GetChunkList(ctx context.Context, path string, offset int64, size int64) (_r *tdfs.ChunkList, _err error) {
+	//TODO implement me
+	panic("implement me")
 }

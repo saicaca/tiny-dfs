@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"github.com/apache/thrift/lib/go/thrift"
 	"io/fs"
 	"log"
 	"os"
@@ -24,6 +25,7 @@ type DataNodeCore struct {
 	usedSpace  int64
 	traffic    int64
 	NNAddr     string
+	ctx        context.Context
 }
 
 type DNConfig struct {
@@ -53,6 +55,21 @@ func NewDataNodeCore(config *DNConfig) (*DataNodeCore, error) {
 	if err := os.MkdirAll(core.root+DATA_PATH, os.ModePerm); err != nil {
 		log.Fatalln("创建存储目录失败：", core.root+DATA_PATH)
 	}
+	if err := os.MkdirAll(core.root+CHUNK_PATH, os.ModePerm); err != nil {
+		log.Fatalln("创建存储目录失败：", core.root+CHUNK_PATH)
+	}
+
+	// Initialize Context
+	ctx := context.Background()
+	localIp, err := util.GetLocalIp()
+	if err != nil {
+		log.Panicln(errors.New("failed to get local IP"))
+	}
+	ctx = thrift.SetReadHeaderList(ctx, []string{"addr"})
+	ctx = thrift.SetHeader(ctx, "addr", localIp)
+	log.Println(thrift.GetHeader(ctx, "addr"))
+	log.Println(thrift.GetReadHeaderList(ctx))
+	core.ctx = ctx
 
 	// 非本地测试模式，扫描文件并发送至 NameNode
 	if !config.isTest {
@@ -62,10 +79,11 @@ func NewDataNodeCore(config *DNConfig) (*DataNodeCore, error) {
 			return nil, err
 		}
 		core.nnclient = nnclient
-		if err := core.Register(); err != nil {
+		if err := core.RegisterDeprecated(); err != nil {
 			log.Println("Failed to register:", err)
 			return nil, err
 		}
+		core.Register()
 	}
 	return core, nil
 }
@@ -75,6 +93,7 @@ type MetaMap map[string]*tdfs.Metadata // map { 文件路径 -> 元数据 }
 const (
 	META_PATH      = "meta/"
 	DATA_PATH      = "data/"
+	CHUNK_PATH     = "/chunk/"
 	META_EXTENSION = ".meta"
 )
 
@@ -265,18 +284,33 @@ func (core *DataNodeCore) Scan() (*MetaMap, error) {
 }
 
 // 向 NameNode 注册服务
-func (core *DataNodeCore) Register() error {
+func (core *DataNodeCore) RegisterDeprecated() error {
 	metaMap, err := core.Scan()
 	if err != nil {
 		log.Panicln("Failed to scan files:", err)
 		return err
 	}
-	_, err = core.nnclient.Register(defaultCtx, *metaMap, core.localIP)
+	_, err = core.nnclient.RegisterDeprecated(core.ctx, *metaMap, core.localIP)
 	if err != nil {
 		return err
 	}
 	//log.Println(resp)
 	return nil
+}
+
+func (core *DataNodeCore) Register() {
+	chunkList, err := core.ScanChunk()
+	if err != nil {
+		log.Panicln("failed to scan chunks", err)
+	}
+	// TODO call namenode to register
+	nnc.RequestNameNode(core.NNAddr, func(client *tdfs.NameNodeClient) error {
+		err = client.Register(core.ctx, chunkList, core.localIP)
+		return nil
+	})
+	if err != nil {
+		log.Panicln("failed to register", err)
+	}
 }
 
 // 获取统计数据
@@ -314,7 +348,7 @@ func (core *DataNodeCore) SaveChunk(data []byte, md5 string) error {
 
 	_ = os.MkdirAll(core.root+md5[0:1]+"/"+md5[0:2]+"/", 0755)
 
-	pathToSave := core.root + "/" + md5[0:1] + "/" + md5[0:2] + "/" + md5 // TODO path generating rules should be configurable
+	pathToSave := core.root + CHUNK_PATH + "/" + md5[0:1] + "/" + md5[0:2] + "/" + md5 // TODO path generating rules should be configurable
 	if _, err := os.Stat(pathToSave); err == nil {
 		_ = os.Remove(pathToSave)
 	}
@@ -349,4 +383,28 @@ func (core *DataNodeCore) PutChunk(taskId string, offset int64, data []byte, md5
 	// TODO send ACK to NameNode and get next DataNode to make replica
 
 	return resp, nil
+}
+
+func (core *DataNodeCore) ScanChunk() ([]string, error) {
+	chunkList := make([]string, 0)
+
+	err := filepath.Walk(core.root+CHUNK_PATH, func(path string, info fs.FileInfo, err error) error {
+		// do nothing if isDir
+		if info.IsDir() {
+			return nil
+		}
+
+		chunkList = append(chunkList, info.Name())
+
+		// update datanode stat
+		core.fileNum++
+		core.usedSpace += info.Size()
+
+		return nil
+	})
+	if err != nil {
+		log.Panicln("failed to scan chunks:", err)
+		return nil, err
+	}
+	return chunkList, nil
 }

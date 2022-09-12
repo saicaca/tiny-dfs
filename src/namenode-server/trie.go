@@ -32,12 +32,12 @@ type INode struct {
 	Children map[string]*INode // 本目录下的文件和子目录 INode 列表
 	Meta     tdfs.Metadata     // 文件元数据
 	Replica  int32             // 本文件当前副本数
-	DNList   set               // 存有本文件的 DataNode 的 IP 集合
+	DNList   CSet              // 存有本文件的 DataNode 的 IP 集合
 	chunks   []string          // List of chunks
 }
 
 type (
-	set map[string]struct{}
+	CSet map[string]struct{}
 )
 
 var void struct{}
@@ -120,7 +120,7 @@ func (t *PathTrie) PutFileLegacy(path string, DNAddr string, meta *tdfs.Metadata
 			delete(toDeleteSet, DNAddr)
 			result.Data["toDelete"] = toDeleteSet
 		} else { // 新建文件，待更新列表为空列表
-			result.Data["toDelete"] = make(set)
+			result.Data["toDelete"] = make(CSet)
 		}
 
 		// 新建 INode
@@ -128,7 +128,7 @@ func (t *PathTrie) PutFileLegacy(path string, DNAddr string, meta *tdfs.Metadata
 			IsDir:   false,
 			Meta:    *meta,
 			Replica: 1,
-			DNList:  make(set),
+			DNList:  make(CSet),
 		}
 		dirNode.Children[fileName].DNList[DNAddr] = void // 将当前 DN 地址加入到副本地址列表
 		log.Println("新建或更新文件", path, "，来自 DataNode 节点", DNAddr)

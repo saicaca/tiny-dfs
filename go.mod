@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/apache/thrift v0.16.0
+	github.com/deckarep/golang-set/v2 v2.1.0
 	github.com/google/uuid v1.3.0
 	github.com/jedib0t/go-pretty/v6 v6.3.6
 	github.com/urfave/cli/v2 v2.11.1

@@ -9,7 +9,7 @@ import (
 func RequestDataNode(addr string, f func(client *tdfs.DataNodeClient)) error {
 
 	var transportFactory thrift.TTransportFactory
-	transportFactory = thrift.NewTBufferedTransportFactory(8192)
+	transportFactory = thrift.NewTHeaderTransportFactoryConf(nil, nil)
 
 	cfg := &thrift.TConfiguration{
 		TLSConfig: &tls.Config{
@@ -32,7 +32,7 @@ func RequestDataNode(addr string, f func(client *tdfs.DataNodeClient)) error {
 	}
 	defer transport.Close()
 	var protocolFactory thrift.TProtocolFactory
-	protocolFactory = thrift.NewTBinaryProtocolFactoryConf(cfg)
+	protocolFactory = thrift.NewTHeaderProtocolFactoryConf(cfg)
 	iprot := protocolFactory.GetProtocol(transport)
 	oprot := protocolFactory.GetProtocol(transport)
 	client := tdfs.NewDataNodeClient(thrift.NewTStandardClient(iprot, oprot))
@@ -42,10 +42,10 @@ func RequestDataNode(addr string, f func(client *tdfs.DataNodeClient)) error {
 
 func NewDataNodeClient(addr string) (*tdfs.DataNodeClient, error) {
 	var protocolFactory thrift.TProtocolFactory
-	protocolFactory = thrift.NewTBinaryProtocolFactoryConf(nil)
+	protocolFactory = thrift.NewTHeaderProtocolFactoryConf(nil)
 
 	var transportFactory thrift.TTransportFactory
-	transportFactory = thrift.NewTBufferedTransportFactory(8192)
+	transportFactory = thrift.NewTHeaderTransportFactoryConf(nil, nil)
 
 	cfg := &thrift.TConfiguration{
 		TLSConfig: &tls.Config{

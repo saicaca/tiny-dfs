@@ -8,10 +8,10 @@ import (
 
 func RequestNameNode(addr string, f func(client *tdfs.NameNodeClient) error) {
 	var protocolFactory thrift.TProtocolFactory
-	protocolFactory = thrift.NewTBinaryProtocolFactoryConf(nil)
+	protocolFactory = thrift.NewTHeaderProtocolFactoryConf(nil)
 
 	var transportFactory thrift.TTransportFactory
-	transportFactory = thrift.NewTBufferedTransportFactory(8192)
+	transportFactory = thrift.NewTHeaderTransportFactoryConf(nil, nil)
 
 	cfg := &thrift.TConfiguration{
 		TLSConfig: &tls.Config{
@@ -41,10 +41,10 @@ func RequestNameNode(addr string, f func(client *tdfs.NameNodeClient) error) {
 
 func NewNameNodeClient(addr string) (*tdfs.NameNodeClient, error) {
 	var protocolFactory thrift.TProtocolFactory
-	protocolFactory = thrift.NewTBinaryProtocolFactoryConf(nil)
+	protocolFactory = thrift.NewTHeaderProtocolFactoryConf(nil)
 
 	var transportFactory thrift.TTransportFactory
-	transportFactory = thrift.NewTBufferedTransportFactory(8192)
+	transportFactory = thrift.NewTHeaderTransportFactoryConf(nil, nil)
 
 	cfg := &thrift.TConfiguration{
 		TLSConfig: &tls.Config{

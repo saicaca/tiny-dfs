@@ -16,7 +16,7 @@ func main() {
 	port := flag.String("port", "19200", "Port to listen to")
 	root := flag.String("root", "./dn/", "Directories to store data")
 	space := flag.String("space", "1GB", "Reserved space to store data")
-	nnaddr := flag.String("nnaddr", "localhost:19100", "NameNode address")
+	nnaddr := flag.String("nnaddr", "localhost:19101", "NameNode address")
 	flag.Usage = Usage
 	flag.Parse()
 
@@ -26,6 +26,7 @@ func main() {
 		ConnectTimeout: 0,
 		SocketTimeout:  0,
 		MaxMessageSize: 1024 * 1024 * 1024,
+		MaxFrameSize:   1024 * 1024 * 1024,
 	}
 
 	spaceInByte := util.SizeToByte(*space)
@@ -34,10 +35,10 @@ func main() {
 	}
 
 	var protocolFactory thrift.TProtocolFactory
-	protocolFactory = thrift.NewTBinaryProtocolFactoryConf(cfg)
+	protocolFactory = thrift.NewTHeaderProtocolFactoryConf(cfg)
 
 	var transportFactory thrift.TTransportFactory
-	transportFactory = thrift.NewTBufferedTransportFactory(8192)
+	transportFactory = thrift.NewTHeaderTransportFactoryConf(nil, cfg)
 
 	transport, err := thrift.NewTServerSocket(addr)
 	if err != nil {

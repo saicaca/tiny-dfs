@@ -2,16 +2,28 @@ package main
 
 import (
 	"context"
+	"encoding/gob"
 	"errors"
 	"fmt"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
+	"io/fs"
 	"log"
+	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 	"tiny-dfs/gen-go/tdfs"
 	dnc "tiny-dfs/src/datanode-client"
+)
+
+const (
+	METADATA_DIR      = "./meta/"
+	METADATA_PREFIX   = "meta"
+	RETAINED_METADATA = 3
 )
 
 type NameNodeCore struct {
@@ -20,6 +32,7 @@ type NameNodeCore struct {
 	putMap        map[string]*PutTask
 	isSafeMode    bool // 是否处于安全模式
 	exitSafeLimit int  // 退出安全模式所需的最小 DN 数量
+	chunkMap      map[string]mapset.Set[string]
 }
 
 func NewNameNodeCore(timeout time.Duration, safeLimit int) *NameNodeCore {
@@ -37,10 +50,17 @@ func NewNameNodeCore(timeout time.Duration, safeLimit int) *NameNodeCore {
 	}
 	registry.minReplica = safeLimit
 	core.Registry = registry
-	core.MetaTrie = NewPathTrie()
 	core.isSafeMode = true
 	core.exitSafeLimit = safeLimit
 	core.putMap = make(map[string]*PutTask)
+	core.chunkMap = make(map[string]mapset.Set[string])
+
+	if err := os.MkdirAll(METADATA_DIR, os.ModePerm); err != nil {
+		log.Fatalln("Failed to create metadata directory：", METADATA_DIR)
+	}
+
+	core.LoadMetadata()
+
 	return core
 }
 
@@ -58,7 +78,7 @@ func (core *NameNodeCore) PutSingleFile(path string, meta *tdfs.Metadata, DNAddr
 
 	// 若此次 PUT 创建或更新了文件，且已经退出安全模式，则删除所有旧的文件副本，并复制新的副本
 	if res.Data["status"] == PUT_UPDATED && !core.isSafeMode {
-		lst := res.Data["toDelete"].(set)
+		lst := res.Data["toDelete"].(CSet)
 		for addr, _ := range lst {
 			core.RemoveReplicaFromDataNode(addr, path)
 		}
@@ -105,7 +125,7 @@ func (core *NameNodeCore) Move(originPath string, newPath string) error {
 	dir.Children[newFileName] = &INode{
 		IsDir:    false,
 		Replica:  0,
-		DNList:   make(set),
+		DNList:   make(CSet),
 		Meta:     newMetadata,
 		Children: make(map[string]*INode),
 	}
@@ -133,7 +153,7 @@ func (core *NameNodeCore) UpdateMetadata(path string, metadata *tdfs.Metadata) e
 	node := core.MetaTrie.GetFileNode(path)
 	node.Meta = *metadata
 
-	successList := make(set)
+	successList := make(CSet)
 	for addr, _ := range node.DNList {
 		client, err := dnc.NewDataNodeClient(addr)
 		if err != nil {
@@ -248,6 +268,7 @@ func (core *NameNodeCore) PutChunk(taskId string, seq int64, chunkId string) (*t
 		if task.finished == task.total {
 			_ = core.MetaTrie.PutFile(task.path, task.meta, task.chunkIds)
 			log.Println("Put file", task.path, "with", task.total, "chunks")
+			core.PersistMetadata()
 			return &tdfs.PutChunkResp{IsFinished: true}, nil
 		} else {
 			return &tdfs.PutChunkResp{IsFinished: false}, nil
@@ -256,5 +277,104 @@ func (core *NameNodeCore) PutChunk(taskId string, seq int64, chunkId string) (*t
 		return &tdfs.PutChunkResp{IsFinished: task.finished == task.total}, nil
 	} else { // different chunks with same offset
 		return nil, errors.New("different chunks with same offset " + strconv.FormatInt(seq, 10))
+	}
+}
+
+func (core *NameNodeCore) GetChunks(path string, offset int64, size int64) (*tdfs.ChunkList, error) {
+	node := core.MetaTrie.GetFileNode(path)
+	if node == nil {
+		return nil, errors.New("File " + path + " not found")
+	}
+	lst := node.Chunks[offset : offset+size]
+	ret := &tdfs.ChunkList{
+		Offset: offset,
+		Chunks: make([]*tdfs.ChunkInfo, size),
+	}
+	for _, v := range lst {
+		info := &tdfs.ChunkInfo{
+			ChunkId: v,
+		}
+		// TODO get datanode list
+		ret.Chunks = append(ret.Chunks, info)
+	}
+
+	return ret, nil
+}
+
+func (core *NameNodeCore) ReceiveChunks(chunks []string, datanodeIP string) {
+	for _, chunk := range chunks {
+		if _, ok := core.chunkMap[chunk]; !ok {
+			core.chunkMap[chunk] = mapset.NewSet[string]()
+		}
+		core.chunkMap[chunk].Add(datanodeIP)
+		log.Println("Loaded chunk", chunk, "on datanode", datanodeIP)
+	}
+}
+
+func (core *NameNodeCore) PersistMetadata() {
+	fileName := METADATA_PREFIX + strconv.FormatInt(time.Now().UnixMicro(), 10)
+	metaFile, err := os.Create(METADATA_DIR + fileName)
+	defer metaFile.Close()
+	if err != nil {
+		log.Panicln("Failed to persist metadata:", err)
+	}
+	enc := gob.NewEncoder(metaFile)
+	err = enc.Encode(*core.MetaTrie)
+	if err != nil {
+		log.Panicln("Failed to persist metadata:", err)
+	}
+	log.Println("Metadata", fileName, "persisted")
+	// TODO remove earlier metadata files
+}
+
+func (core *NameNodeCore) LoadMetadata() {
+	// list all metadata files
+	var fileList []string
+	err := filepath.Walk(METADATA_DIR, func(path string, info fs.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+		fileName := info.Name()
+		if !strings.HasPrefix(fileName, METADATA_PREFIX) {
+			return nil
+		}
+		fileList = append(fileList, fileName)
+		return nil
+	})
+	if err != nil {
+		log.Panicln("Failed to load metadata files from disk", err)
+	}
+
+	// sort the files and use the latest one
+	sort.Sort(sort.Reverse(sort.StringSlice(fileList)))
+
+	core.MetaTrie = NewPathTrie()
+	if len(fileList) == 0 {
+		log.Println("Did not find metadata to load")
+		return
+	}
+
+	log.Println("Loading metadata", fileList[0])
+	file, err := os.Open(METADATA_DIR + fileList[0])
+	defer file.Close()
+	if err != nil {
+		log.Panicln("Failed to open metadata file", fileList[0], err)
+	}
+	dec := gob.NewDecoder(file)
+	err = dec.Decode(core.MetaTrie)
+	if err != nil {
+		log.Panicln("Failed to decode metadata", fileList[0], err)
+	}
+	log.Println("Metadata", fileList[0], "loaded")
+
+	// delete earlier metadata files
+	for i := RETAINED_METADATA; i < len(fileList); i++ {
+		idx := i
+		go func() {
+			err := os.Remove(METADATA_DIR + fileList[idx])
+			if err != nil {
+				log.Println("Failed to delete outdated metadata file", fileList[idx], err)
+			}
+		}()
 	}
 }

@@ -35,3 +35,14 @@ struct FileStat {
 struct PutChunkResp {
     1:bool isFinished;
 }
+
+struct ChunkList {
+    1:i64 offset;
+    2:list<ChunkInfo> chunks;
+}
+
+struct ChunkInfo {
+    1:string chunkId;
+    2:string checksum;
+    3:list<string> datanodes;
+}

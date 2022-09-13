@@ -13,7 +13,7 @@ import (
 
 func main() {
 	// 获取运行参数 {addr}
-	port := flag.Int("port", 19100, "Address to listen to")
+	port := flag.Int("port", 19101, "Address to listen to")
 	limit := flag.Int("limit", 2, "The minimum number of replica")
 	timeout := flag.Int64("interval", 30, "The interval between two heartbeats")
 	flag.Usage = Usage
@@ -22,12 +22,15 @@ func main() {
 	addr := "localhost:" + strconv.Itoa(*port)
 
 	var protocolFactory thrift.TProtocolFactory
-	protocolFactory = thrift.NewTBinaryProtocolFactoryConf(nil)
+	//protocolFactory = thrift.NewTBinaryProtocolFactoryConf(nil)
+	protocolFactory = thrift.NewTHeaderProtocolFactoryConf(nil)
 
 	var transportFactory thrift.TTransportFactory
-	transportFactory = thrift.NewTBufferedTransportFactory(8192)
+	//transportFactory = thrift.NewTBufferedTransportFactory(8192)
+	//transportFactory = thrift.NewTTransportFactory()
+	transportFactory = thrift.NewTHeaderTransportFactoryConf(nil, nil)
 
-	transport, err := thrift.NewTServerSocket(addr)
+	serverTransport, err := thrift.NewTServerSocket(addr)
 	if err != nil {
 		log.Fatalln("run server error:", err)
 	}
@@ -35,7 +38,7 @@ func main() {
 	core := NewNameNodeCore(time.Duration(*timeout)*time.Second, *limit)
 	handler := NewNameNodeHandler(core)
 	processor := tdfs.NewNameNodeProcessor(handler)
-	server := thrift.NewTSimpleServer4(processor, transport, transportFactory, protocolFactory)
+	server := thrift.NewTSimpleServer4(processor, serverTransport, transportFactory, protocolFactory)
 
 	log.Println("NameNode running on", addr)
 

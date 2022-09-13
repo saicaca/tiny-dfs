@@ -23,7 +23,7 @@ func NewFileChunker(path string) (*FileChunker, error) {
 
 	info, _ := chunker.file.Stat()
 	chunker.fileSize = uint64(info.Size())
-	chunker.chunkSize = 128 * 1024 * 1024 // TODO should be configurable
+	chunker.chunkSize = 64 * 1024 * 1024 // TODO should be configurable
 	chunker.total = uint64(math.Ceil(float64(chunker.fileSize) / float64(chunker.chunkSize)))
 
 	chunker.curr = 0

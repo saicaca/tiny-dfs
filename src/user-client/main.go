@@ -54,7 +54,7 @@ func main() {
 					remotePath := c.Args().Get(0)
 					localPath := c.Args().Get(1)
 					//fmt.Printf("Download the file %s to %s\n", remotePath, localPath)
-					getFile(remotePath, localPath)
+					getFileDeprecated(remotePath, localPath)
 					return nil
 				},
 			},
@@ -284,7 +284,7 @@ func putFile(localPath string, remotePath string) {
 	fmt.Println("Succeed to put file", localPath, "to", remotePath)
 }
 
-func getFile(remotePath string, localPath string) {
+func getFileDeprecated(remotePath string, localPath string) {
 
 	// 确保本地文件夹存在
 	dir := filepath.Dir(localPath)
@@ -323,6 +323,18 @@ func getFile(remotePath string, localPath string) {
 	if err != nil {
 		log.Panicln("Failed to write file:", err)
 	}
+}
+
+func getFile(remotePath string, localPath string) {
+	// ensure local directories exist
+	dir := filepath.Dir(localPath)
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		log.Panicln("Failed to create directories", localPath, err)
+	}
+
+	// get chunk IDs
+
 }
 
 func deleteFile(remotePath string) {

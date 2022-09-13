@@ -79,11 +79,7 @@ func NewDataNodeCore(config *DNConfig) (*DataNodeCore, error) {
 			return nil, err
 		}
 		core.nnclient = nnclient
-		if err := core.RegisterDeprecated(); err != nil {
-			log.Println("Failed to register:", err)
-			return nil, err
-		}
-		core.Register()
+		go core.Register()
 	}
 	return core, nil
 }

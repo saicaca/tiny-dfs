@@ -13,7 +13,7 @@ import (
 
 func main() {
 	// 获取运行参数 {addr}
-	port := flag.Int("port", 19100, "Address to listen to")
+	port := flag.Int("port", 19101, "Address to listen to")
 	limit := flag.Int("limit", 2, "The minimum number of replica")
 	timeout := flag.Int64("interval", 30, "The interval between two heartbeats")
 	flag.Usage = Usage

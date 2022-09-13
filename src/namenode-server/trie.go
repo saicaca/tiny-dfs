@@ -12,17 +12,17 @@ import (
 
 // PathTrie 是 NameNode 中管理文件系统目录的数据结构
 type PathTrie struct {
-	root       *INode
-	filesByDN  map[string][]string
-	minReplica int32
+	Root       *INode
+	FilesByDN  map[string][]string
+	MinReplica int32
 }
 
 // NewPathTrie 创建新的 PathTrie
 func NewPathTrie() *PathTrie {
 	return &PathTrie{
-		root:       NewDirNode(),
-		filesByDN:  make(map[string][]string),
-		minReplica: 3,
+		Root:       NewDirNode(),
+		FilesByDN:  make(map[string][]string),
+		MinReplica: 3,
 	}
 }
 
@@ -33,7 +33,7 @@ type INode struct {
 	Meta     tdfs.Metadata     // 文件元数据
 	Replica  int32             // 本文件当前副本数
 	DNList   CSet              // 存有本文件的 DataNode 的 IP 集合
-	chunks   []string          // List of chunks
+	Chunks   []string          // List of chunks
 }
 
 type (
@@ -51,7 +51,7 @@ func NewDirNode() *INode {
 
 // 获取指定目录的 INode，create 表示当指定目录不存在时是否自动创建
 func (t *PathTrie) getDir(path string, create bool) (*INode, error) {
-	currNode := t.root
+	currNode := t.Root
 	dirs := splitPath(path)
 	for _, dir := range dirs {
 		next, ok := currNode.Children[dir]
@@ -148,7 +148,7 @@ func (t *PathTrie) PutFileLegacy(path string, DNAddr string, meta *tdfs.Metadata
 	}
 
 	// 写入 DN地址 -> 文件 map
-	t.filesByDN[DNAddr] = append(t.filesByDN[DNAddr], path)
+	t.FilesByDN[DNAddr] = append(t.FilesByDN[DNAddr], path)
 
 	return result, nil
 }
@@ -164,7 +164,7 @@ func (t *PathTrie) PutFile(path string, meta *tdfs.Metadata, chunks []string) er
 	dirNode.Children[fileName] = &INode{
 		IsDir:   false,
 		Meta:    *meta,
-		chunks:  chunks,
+		Chunks:  chunks,
 		Replica: 1, // Temporary, for compatibility with older versions
 	}
 	return nil
@@ -182,7 +182,7 @@ func (t *PathTrie) GetFileNode(path string) *INode {
 
 // RemoveByDN 从 trie 中移除指定 DN 下所有文件信息（用于 DN 断连的情况），返回副本数量低于最低值的文件列表
 func (t *PathTrie) RemoveByDN(DNAddr string) (*shared.Result, error) {
-	fileList := t.filesByDN[DNAddr]
+	fileList := t.FilesByDN[DNAddr]
 
 	log.Println(DNAddr, "存储的文件副本：", fileList)
 
@@ -197,7 +197,7 @@ func (t *PathTrie) RemoveByDN(DNAddr string) (*shared.Result, error) {
 
 		dirNode.Children[fileName].Replica -= 1           // 减少副本数量
 		delete(dirNode.Children[fileName].DNList, DNAddr) // 从文件的副本 DataNode 列表中移除当前 DataNode
-		if dirNode.Children[fileName].Replica < t.minReplica {
+		if dirNode.Children[fileName].Replica < t.MinReplica {
 			filesToCopy = append(filesToCopy, filePath)
 		}
 	}
@@ -254,7 +254,7 @@ func (t *PathTrie) ListStat(path string) (map[string]*tdfs.FileStat, error) {
 }
 
 func (t *PathTrie) WalkAllFiles(action func(path string, fileNode *INode)) {
-	t.doWithAllFiles(t.root, "", action)
+	t.doWithAllFiles(t.Root, "", action)
 }
 
 func (t *PathTrie) doWithAllFiles(node *INode, currPath string, action func(path string, fileNode *INode)) {

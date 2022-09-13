@@ -26,7 +26,7 @@ func (n NameNodeHandler) RegisterDeprecated(ctx context.Context, meta_map map[st
 	//log.Println("Get addr from context:", addr)
 	//log.Println("Get RHeader List:", thrift.GetReadHeaderList(ctx))
 	//log.Println("Get WHeader List:", thrift.GetWriteHeaderList(ctx))
-	n.core.PutFileLegacy(meta_map, client_ip)
+	//n.core.PutFileLegacy(meta_map, client_ip)
 
 	go n.core.Registry.PutDataNode(client_ip)
 
@@ -35,6 +35,7 @@ func (n NameNodeHandler) RegisterDeprecated(ctx context.Context, meta_map map[st
 
 func (n NameNodeHandler) Register(ctx context.Context, chunks []string, datanode_ip string) (_err error) {
 	n.core.ReceiveChunks(chunks, datanode_ip)
+	n.core.Registry.PutDataNode(datanode_ip)
 	return
 }
 

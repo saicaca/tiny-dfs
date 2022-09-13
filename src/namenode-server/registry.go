@@ -43,22 +43,22 @@ func NewRegistry(timeout time.Duration, deleteAction func(addr string)) *Registr
 }
 
 func (r *Registry) PutDataNode(addr string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	//r.mu.Lock()
+	//defer r.mu.Unlock()
 	s := r.dnmap[addr]
 	if s == nil { // DN 未注册
 		// TODO 因为 DataNodeCore 初始化并注册的时候，服务器并未启动，调用 Ping 获取 Stat 会无法连接，暂时采用循环等待的方法
-		var client *tdfs.DataNodeClient
 		var stat *tdfs.DNStat = nil
-		var err error
 		for stat == nil {
-			client, err = dnc.NewDataNodeClient(addr) // 获取 DN Client
+			err := dnc.RequestDataNode(addr, func(client *tdfs.DataNodeClient) {
+				st, err := client.Ping(context.Background())
+				if err != nil {
+				} else {
+					stat = st
+				}
+			})
 			if err != nil {
-				continue
-			}
-			stat, err = client.Ping(context.Background())
-			if err != nil {
-				continue
+				log.Println(err)
 			}
 		}
 		r.dnmap[addr] = &DNItem{

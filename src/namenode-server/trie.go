@@ -65,7 +65,7 @@ func (t *PathTrie) getDir(path string, create bool) (*INode, error) {
 				currNode.Children[dir] = newNode
 				currNode = newNode
 			} else { // 不存在目录，返回错误
-				return nil, errors.New("目录查找失败，不存在此目录：" + dir)
+				return nil, errors.New("Dir" + dir)
 			}
 		}
 	}

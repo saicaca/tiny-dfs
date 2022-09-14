@@ -95,7 +95,7 @@ func (core *NameNodeCore) SetDeleted(path string) error {
 	return err
 }
 
-func (core *NameNodeCore) Move(originPath string, newPath string) error {
+func (core *NameNodeCore) MoveDeprecated(originPath string, newPath string) error {
 	newDir, newFileName := filepath.Split(newPath)
 
 	// 获取被移动文件信息
@@ -146,6 +146,34 @@ func (core *NameNodeCore) Move(originPath string, newPath string) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (core *NameNodeCore) Move(originPath string, newPath string) error {
+	newDir, newFileName := filepath.Split(newPath)
+	oldDir, oldFileName := filepath.Split(originPath)
+
+	// get original file/directory node
+	oldDirNode, err := core.MetaTrie.getDir(oldDir, false)
+	if err != nil {
+		return errors.New(originPath + " not found")
+	}
+	oldNode, ok := oldDirNode.Children[oldFileName]
+	if !ok {
+		return errors.New(originPath + " not found")
+	}
+
+	// move the node to new directory
+	newDirNode, err := core.MetaTrie.getDir(newDir, true)
+	if err != nil {
+		return errors.New("Failed to create " + newPath)
+	}
+	if _, ok := newDirNode.Children[newFileName]; ok {
+		return errors.New(newPath + " already exist")
+	}
+	newDirNode.Children[newFileName] = oldNode
+	delete(oldDirNode.Children, oldFileName)
+	core.PersistMetadata()
 	return nil
 }
 

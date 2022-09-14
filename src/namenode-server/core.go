@@ -86,13 +86,33 @@ func (core *NameNodeCore) PutSingleFile(path string, meta *tdfs.Metadata, DNAddr
 	}
 }
 
-func (core *NameNodeCore) SetDeleted(path string) error {
+func (core *NameNodeCore) SetDeletedDeprecated(path string) error {
 	node := core.MetaTrie.GetFileNode(path)
 	meta := node.Meta
 	meta.Mtime = time.Now().UnixMilli()
 	meta.IsDeleted = true
 	err := core.UpdateMetadata(path, &meta)
 	return err
+}
+
+func (core *NameNodeCore) Delete(path string) error {
+	path = BeautifyPath(path)
+	if path == "\\" {
+		return errors.New("Cannot delete root directory")
+	}
+
+	dir, name := filepath.Split(path)
+	dirNode, err := core.MetaTrie.getDir(dir, false)
+	if err != nil {
+		return errors.New(path + " not exist")
+	}
+	_, ok := dirNode.Children[name]
+	if !ok {
+		return errors.New(path + " not exist")
+	}
+	delete(dirNode.Children, name)
+	core.PersistMetadata()
+	return nil
 }
 
 func (core *NameNodeCore) MoveDeprecated(originPath string, newPath string) error {
@@ -150,8 +170,14 @@ func (core *NameNodeCore) MoveDeprecated(originPath string, newPath string) erro
 }
 
 func (core *NameNodeCore) Move(originPath string, newPath string) error {
-	newDir, newFileName := filepath.Split(newPath)
+	originPath = BeautifyPath(originPath)
+	newPath = BeautifyPath(newPath)
 	oldDir, oldFileName := filepath.Split(originPath)
+	newDir, newFileName := filepath.Split(newPath)
+
+	if originPath == "\\" {
+		return errors.New("Cannot rename/move root directory")
+	}
 
 	// get original file/directory node
 	oldDirNode, err := core.MetaTrie.getDir(oldDir, false)

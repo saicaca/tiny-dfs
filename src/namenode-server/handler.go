@@ -95,10 +95,7 @@ func (n NameNodeHandler) Put(ctx context.Context, path string, metadata *tdfs.Me
 }
 
 func (n NameNodeHandler) Delete(ctx context.Context, remote_file_path string) (_err error) {
-	err := n.core.SetDeleted(remote_file_path)
-	if err != nil {
-		log.Println("删除文件", remote_file_path, "失败：", err)
-	}
+	err := n.core.Delete(remote_file_path)
 	return err
 }
 

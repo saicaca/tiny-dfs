@@ -212,7 +212,7 @@ func (t *PathTrie) RemoveByDN(DNAddr string) (*shared.Result, error) {
 
 // 显示指定目录下的所有文件和子目录
 func (t *PathTrie) List(path string) {
-	path = beautifyPath(path)
+	path = BeautifyPath(path)
 
 	target, err := t.FindDir(path)
 	if err != nil {
@@ -230,7 +230,7 @@ func (t *PathTrie) List(path string) {
 
 // 返回指定目录下的所有文件和子目录的信息
 func (t *PathTrie) ListStat(path string) (map[string]*tdfs.FileStat, error) {
-	path = beautifyPath(path)
+	path = BeautifyPath(path)
 
 	target, err := t.FindDir(path)
 	if err != nil {
@@ -279,7 +279,7 @@ func splitPath(path string) []string {
 }
 
 // 统一路径字符串格式
-func beautifyPath(path string) string {
+func BeautifyPath(path string) string {
 	parts := splitPath(path)
 	if len(parts) == 0 {
 		return "\\"
